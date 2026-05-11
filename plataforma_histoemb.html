@@ -50,8 +50,21 @@
 
     .topics-section { margin-top: 28px; }
     .topics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
-    .topic-card { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; border: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; }
+    .topic-card { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; border: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; position: relative; }
     .topic-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .topic-flags { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; }
+    .topic-flags label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text2); cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 4px; }
+    .topic-flags label:hover { background: var(--surface2); color: var(--text); }
+    .topic-flags input[type="checkbox"] { width: 13px; height: 13px; cursor: pointer; accent-color: var(--accent); margin: 0; }
+    .topic-flags .flag-ex { color: #ef4444; font-weight: 700; }
+    .topic-flags .flag-ex input { accent-color: #ef4444; }
+    .topic-flags .flag-imp { color: #f59e0b; font-weight: 600; }
+    .topic-flags .flag-imp input { accent-color: #f59e0b; }
+    .topic-flags .flag-rep { color: #3b82f6; }
+    .topic-flags .flag-rep input { accent-color: #3b82f6; }
+    .topic-card.flagged-examen { border-color: #ef4444; background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05)); box-shadow: 0 0 0 2px rgba(239,68,68,0.35), 0 4px 12px rgba(239,68,68,0.2); }
+    .topic-card.flagged-examen:hover { border-color: #f87171; background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08)); }
+    .topic-card.flagged-examen .topic-info .name::before { content: "🔥 "; }
     .topic-info { flex: 1; min-width: 0; }
     .topic-info .name { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .topic-info .count { font-size: 0.75rem; color: var(--text2); }
@@ -439,9 +452,14 @@ const STORAGE_KEY = 'histemb_study_v1';
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (!d.topicFlags) d.topicFlags = {};
+      if (!d.qs) d.qs = {};
+      return d;
+    }
   } catch(e) {}
-  return { qs: {} }; // qs[id] = {a:attempts, c:correct, d:difficulty(0-3), m:marked(0/1)}
+  return { qs: {}, topicFlags: {} };
 }
 
 function saveData() {
@@ -554,6 +572,7 @@ const App = {
       return numA - numB || a.localeCompare(b);
     });
 
+    const flags = State.data.topicFlags || (State.data.topicFlags = {});
     grid.innerHTML = topicNames.map(topic => {
       const topicQs = ALL_QUESTIONS.filter(q => q.topicBase === topic);
       const total = topicQs.length;
@@ -566,12 +585,20 @@ const App = {
       const color = attempts > 0 ? colorForPct(p) : 'var(--text2)';
       const attempted = topicQs.filter(q => qs[q.id] && qs[q.id].a > 0).length;
       const progressPct = Math.round((attempted / total) * 100);
+      const escTopic = topic.replace(/'/g,'&apos;');
+      const f = flags[topic] || {};
+      const cardClass = 'topic-card' + (f.e ? ' flagged-examen' : '');
 
-      return `<div class="topic-card" onclick="App.startSingleTopic('${topic.replace(/'/g,'&apos;')}')">
+      return `<div class="${cardClass}" onclick="App.startSingleTopic('${escTopic}')">
         <div class="topic-info">
           <div class="name">${topic}</div>
           <div class="count">${total} preguntas · ${attempted} respondidas</div>
           <div class="progress-bar-h" style="margin-top:6px"><div class="progress-bar-fill" style="width:${progressPct}%"></div></div>
+          <div class="topic-flags" onclick="event.stopPropagation()">
+            <label class="flag-ex" title="Marcar como contenido de EXAMEN"><input type="checkbox" ${f.e?'checked':''} onchange="App.toggleTopicFlag('${escTopic}','e',this.checked)">EXAMEN</label>
+            <label class="flag-imp" title="Importante"><input type="checkbox" ${f.i?'checked':''} onchange="App.toggleTopicFlag('${escTopic}','i',this.checked)">importante</label>
+            <label class="flag-rep" title="Deberías repasarlo"><input type="checkbox" ${f.r?'checked':''} onchange="App.toggleTopicFlag('${escTopic}','r',this.checked)">deberías repasarlo</label>
+          </div>
         </div>
         <div style="text-align:center;min-width:52px">
           <div style="font-size:1.4rem;font-weight:800;color:${color}">${attempts > 0 ? p + '%' : '—'}</div>
@@ -584,6 +611,18 @@ const App = {
   startSingleTopic(topic) {
     const qs = ALL_QUESTIONS.filter(q => q.topicBase === topic);
     this.beginSession(qs, 'topic');
+  },
+
+  toggleTopicFlag(topic, flag, checked) {
+    topic = topic.replace(/&apos;/g, "'");
+    if (!State.data.topicFlags) State.data.topicFlags = {};
+    if (!State.data.topicFlags[topic]) State.data.topicFlags[topic] = {};
+    State.data.topicFlags[topic][flag] = checked ? 1 : 0;
+    if (!State.data.topicFlags[topic].e && !State.data.topicFlags[topic].i && !State.data.topicFlags[topic].r) {
+      delete State.data.topicFlags[topic];
+    }
+    saveData();
+    this.renderTopicsGrid();
   },
 
   // ----- Modos de inicio -----
@@ -1106,7 +1145,7 @@ const App = {
 
   resetData() {
     if (!confirm('¿Seguro que quieres borrar todo el progreso? Esta acción no se puede deshacer.')) return;
-    State.data = { qs: {} };
+    State.data = { qs: {}, topicFlags: {} };
     saveData();
     this.updateHomeStats();
     this.renderTopicsGrid();
@@ -1227,7 +1266,7 @@ function fbSave() {
 }
 
 function fbMerge(local, remote) {
-  var merged = { qs: {} };
+  var merged = { qs: {}, topicFlags: {} };
   var allIds = new Set(Object.keys(local.qs || {}).concat(Object.keys(remote.qs || {})));
   allIds.forEach(function(id) {
     var l = (local.qs || {})[id];
@@ -1235,6 +1274,13 @@ function fbMerge(local, remote) {
     if (!l) { merged.qs[id] = r; }
     else if (!r) { merged.qs[id] = l; }
     else { var mq = { a: Math.max(l.a||0, r.a||0), c: Math.max(l.c||0, r.c||0), d: r.d||l.d||0, m: r.m||l.m||0 }; var n = r.note || l.note; if (n) mq.note = n; merged.qs[id] = mq; }
+  });
+  var lf = local.topicFlags || {}, rf = remote.topicFlags || {};
+  var allTopics = new Set(Object.keys(lf).concat(Object.keys(rf)));
+  allTopics.forEach(function(t) {
+    var l = lf[t] || {}, r = rf[t] || {};
+    var f = { e: l.e || r.e || 0, i: l.i || r.i || 0, r: l.r || r.r || 0 };
+    if (f.e || f.i || f.r) merged.topicFlags[t] = f;
   });
   return merged;
 }
