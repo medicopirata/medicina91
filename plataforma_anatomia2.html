@@ -83,7 +83,7 @@
     .progress-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.4s; }
 
     /* ===== SELECTOR DE TEMA ===== */
-    #topic-selector { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 500; }
+    #topic-selector, #combo-selector { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 500; }
     .selector-box { background: var(--surface); border-radius: 14px; padding: 28px; max-width: 520px; width: 95%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border); }
     .selector-box h2 { margin-bottom: 20px; font-size: 1.2rem; }
     .sel-options label { display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
@@ -313,6 +313,15 @@
           <option value="30">30 preguntas</option>
           <option value="50">50 preguntas</option>
           <option value="100">100 preguntas</option>
+          <option value="200">200 preguntas</option>
+          <option value="300">300 preguntas</option>
+          <option value="400">400 preguntas</option>
+          <option value="500">500 preguntas</option>
+          <option value="600">600 preguntas</option>
+          <option value="700">700 preguntas</option>
+          <option value="800">800 preguntas</option>
+          <option value="900">900 preguntas</option>
+          <option value="1000">1000 preguntas</option>
         </select>
       </label>
       <button class="btn btn-outline btn-sm" onclick="App.showStats()">📊 Ver estadísticas</button>
