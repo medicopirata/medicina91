@@ -286,6 +286,11 @@
         <span class="title">Repaso inteligente</span>
         <span class="desc">Ponderado por dificultad y fallos</span>
       </button>
+      <button class="mode-btn" id="btn-combo" onclick="App.openComboSelector('global')">
+        <span class="icon">🎯</span>
+        <span class="title">Combinar repaso</span>
+        <span class="desc">Falladas, marcadas y/o difíciles</span>
+      </button>
     </div>
   </div>
 
@@ -346,6 +351,32 @@
     <div class="sel-actions">
       <button class="btn btn-outline" onclick="document.getElementById('topic-selector').classList.add('hidden')">Cancelar</button>
       <button class="btn btn-primary" onclick="App.startTopicSelection()">Iniciar estudio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== COMBO SELECTOR ======== -->
+<div id="combo-selector" class="hidden">
+  <div class="selector-box">
+    <h2>Combinar repaso</h2>
+    <p id="combo-scope-hint" style="color:var(--text2);font-size:0.88rem;margin:-4px 0 10px 0">Elige qué grupos incluir.</p>
+    <div class="sel-options">
+      <label><input type="checkbox" id="combo-failed"> ❌ Falladas</label>
+      <label><input type="checkbox" id="combo-marked"> 🔖 Marcadas</label>
+      <label><input type="checkbox" id="combo-hard"> 🔥 Difíciles</label>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <span style="color:var(--text2);font-size:0.88rem">Modo:</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;cursor:pointer">
+        <input type="radio" name="combo-mode" value="union" checked> Cualquiera (unión)
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.88rem;cursor:pointer">
+        <input type="radio" name="combo-mode" value="intersection"> Todas a la vez (intersección)
+      </label>
+    </div>
+    <div class="sel-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('combo-selector').classList.add('hidden')">Cancelar</button>
+      <button class="btn btn-primary" onclick="App.startComboSelection()">Iniciar repaso</button>
     </div>
   </div>
 </div>
@@ -436,6 +467,7 @@
     <button class="btn btn-primary" onclick="App.retrySession('all')">🔄 Repetir todas</button>
     <button class="btn btn-danger" id="res-btn-failed" onclick="App.retrySession('failed')">❌ Solo falladas</button>
     <button class="btn btn-warn" id="res-btn-marked" onclick="App.retrySession('marked')">🔖 Solo marcadas</button>
+    <button class="btn btn-outline" id="res-btn-combo" onclick="App.openComboSelector('session')">🎯 Combinar...</button>
     <button class="btn btn-outline" onclick="App.goHome()">🏠 Inicio</button>
   </div>
 
@@ -1116,6 +1148,67 @@ const App = {
     const shuffleQ = document.getElementById('chk-shuffle').checked;
     if (shuffleQ) originalQs = shuffle(originalQs);
     this.beginSession(originalQs, sess.mode);
+  },
+
+  openComboSelector(scope) {
+    State.comboScope = (scope === 'session' && State.session) ? 'session' : 'global';
+    document.getElementById('combo-failed').checked = false;
+    document.getElementById('combo-marked').checked = false;
+    document.getElementById('combo-hard').checked = false;
+    const unionRadio = document.querySelector('input[name="combo-mode"][value="union"]');
+    if (unionRadio) unionRadio.checked = true;
+    const hint = document.getElementById('combo-scope-hint');
+    if (hint) {
+      hint.textContent = State.comboScope === 'session'
+        ? 'Filtrando dentro de la sesión recién completada.'
+        : 'Filtrando sobre todas las preguntas del banco.';
+    }
+    document.getElementById('combo-selector').classList.remove('hidden');
+  },
+
+  startComboSelection() {
+    const useFailed = document.getElementById('combo-failed').checked;
+    const useMarked = document.getElementById('combo-marked').checked;
+    const useHard   = document.getElementById('combo-hard').checked;
+    if (!useFailed && !useMarked && !useHard) { alert('Selecciona al menos un grupo.'); return; }
+    const combineMode = (document.querySelector('input[name="combo-mode"]:checked') || {}).value || 'union';
+    const scope = State.comboScope || 'global';
+    const qsData = State.data.qs;
+    const sess = State.session;
+
+    const isFailed = (q) => {
+      if (scope === 'session' && sess) {
+        const ans = sess.answers[q.id];
+        return !!(ans && !ans.wasCorrect);
+      }
+      const s = qsData[q.id];
+      return !!(s && s.a > 0 && s.c < s.a);
+    };
+    const isMarked = (q) => { const s = qsData[q.id]; return !!(s && s.m); };
+    const isHard   = (q) => { const s = qsData[q.id]; return !!(s && s.d === 3); };
+
+    const test = (q) => {
+      const checks = [];
+      if (useFailed) checks.push(isFailed(q));
+      if (useMarked) checks.push(isMarked(q));
+      if (useHard)   checks.push(isHard(q));
+      return combineMode === 'intersection' ? checks.every(Boolean) : checks.some(Boolean);
+    };
+
+    const sourcePool = (scope === 'session' && sess)
+      ? sess.questions.map(pq => ALL_QUESTIONS.find(q => q.id === pq.id)).filter(Boolean)
+      : ALL_QUESTIONS;
+
+    let pool = sourcePool.filter(test);
+    if (pool.length === 0) { alert('No hay preguntas que cumplan los criterios.'); return; }
+
+    document.getElementById('combo-selector').classList.add('hidden');
+
+    const shuffleQ = document.getElementById('chk-shuffle').checked;
+    const limit = parseInt(document.getElementById('sel-limit').value) || 0;
+    if (shuffleQ) pool = shuffle(pool);
+    if (limit > 0 && limit < pool.length) pool = pool.slice(0, limit);
+    this.beginSession(pool, 'combo');
   },
 
   goHome() {
