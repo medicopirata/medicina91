@@ -637,8 +637,10 @@ const App = {
       const escTopic = topic.replace(/'/g,'&apos;');
       const f = flags[topic] || {};
       const cardClass = 'topic-card' + (f.e ? ' flagged-examen' : '');
+      const hasDup = topicQs.some(q => q.dup);
 
-      return `<div class="${cardClass}" onclick="App.startSingleTopic('${escTopic}')">
+      return `<div class="${cardClass}" onclick="App.startSingleTopic('${escTopic}')" style="position:relative">
+        ${hasDup ? '<span class="topic-dup-star" title="Contiene preguntas repetidas en otro cuestionario" style="position:absolute;top:6px;right:8px;font-size:18px;line-height:1">⭐</span>' : ''}
         <div class="topic-info">
           <div class="name">${displayName}</div>
           <div class="count">${total} preguntas · ${attempted} respondidas</div>
