@@ -343,23 +343,48 @@
             "Óvulo"
         ];
 
-        window.onload = function() {
+        // Baraja un array (Fisher-Yates) sin modificar el original
+        function barajar(array) {
+            const copia = array.slice();
+            for (let i = copia.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copia[i], copia[j]] = [copia[j], copia[i]];
+            }
+            return copia;
+        }
+
+        const NUM_DISTRACTORES = 10;
+
+        function poblarDesplegables() {
             const selects = document.querySelectorAll('.dropdown');
-            
+
             selects.forEach(select => {
+                select.innerHTML = "";
+
+                const correcta = select.getAttribute('data-correct');
+
+                // Distractores: opciones distintas de la correcta, elegidas al azar
+                const distractores = barajar(opciones.filter(o => o !== correcta))
+                    .slice(0, NUM_DISTRACTORES);
+
+                // La correcta + los distractores, todo mezclado
+                const finales = barajar([correcta, ...distractores]);
+
                 let defaultOption = document.createElement('option');
                 defaultOption.value = "";
                 defaultOption.text = "--- Selecciona una estructura ---";
                 select.appendChild(defaultOption);
 
-                opciones.forEach(opcion => {
+                finales.forEach(opcion => {
                     let opt = document.createElement('option');
                     opt.value = opcion;
                     opt.text = opcion;
                     select.appendChild(opt);
                 });
             });
-        };
+        }
+
+        window.onload = poblarDesplegables;
 
         function verificarRespuestas() {
             const selectRows = document.querySelectorAll('.dropdown');
