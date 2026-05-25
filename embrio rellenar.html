@@ -49,9 +49,27 @@
             background-color: #1e88e5;
         }
         .score-display {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-top: 15px;
+        }
+
+        /* Botón de verificar siempre visible, abajo a la izquierda */
+        .floating-verify {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.96);
+            padding: 12px 16px;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            backdrop-filter: blur(4px);
+        }
+        .floating-verify button {
+            margin: 0;
         }
         
         /* Layout principal: franja amplia que crece con el contenido */
@@ -91,10 +109,18 @@
             margin: 0 auto;
         }
 
-        /* Columna de las preguntas: fluye con la página */
+        /* Columna de las preguntas: caja fija (sticky) con scroll propio */
         .quiz-column {
             flex: 1 1 45%;
-            padding-right: 15px;
+            background-color: #fff;
+            padding: 16px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            position: sticky;
+            top: 20px;
+            align-self: flex-start;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
         }
         
         .section-title {
@@ -162,10 +188,13 @@
         <p>La imagen permanece visible a la izquierda mientras desplazas la página para rellenar las preguntas.</p>
         
         <div class="controls">
-            <button class="btn-verify" onclick="verificarRespuestas()">Verificar Respuestas</button>
             <button class="btn-retry" onclick="reiniciarTest()">Volver a Intentar</button>
-            <div id="score" class="score-display"></div>
         </div>
+    </div>
+
+    <div class="floating-verify">
+        <button class="btn-verify" onclick="verificarRespuestas()">✓ Verificar Respuestas</button>
+        <div id="score" class="score-display"></div>
     </div>
 
     <div class="main-layout">
