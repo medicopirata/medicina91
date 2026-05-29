@@ -2621,60 +2621,116 @@
     }
   }
 
+  // Estado para que la búsqueda y la ordenación no vuelvan a pegar a Firebase
+  const adminVisitsState = { rows: [] };
+
+  function buildVisitRow(usuario, stats){
+    const sessions = stats?.sessions ? Object.values(stats.sessions) : [];
+    const devicesSet = new Set();
+    let firstMs = Infinity, lastMs = 0;
+    for(const s of sessions){
+      devicesSet.add(`${s?.deviceType||"-"}|${s?.browser||"-"}|${s?.os||"-"}`);
+      const start = Number(s?.startedAtMs || Date.parse(s?.startedAt||"") || 0);
+      const seen  = Number(s?.lastSeenAtMs || Date.parse(s?.lastSeenAt||"") || start);
+      if(start && start < firstMs) firstMs = start;
+      if(seen  && seen  > lastMs)  lastMs  = seen;
+    }
+    if(!isFinite(firstMs)) firstMs = 0;
+    return {
+      uid:      usuario.uid,
+      username: usuario.username || "Tripulante",
+      isAdmin:  isAdminProfile(usuario),
+      visitas:  stats?.total || 0,
+      sesiones: stats?.totalSessions || sessions.length || 0,
+      recargas: stats?.totalReloads || 0,
+      activoMs: stats?.totalActiveMs || 0,
+      devices:  devicesSet.size || (stats?.lastDeviceType || stats?.lastBrowser || stats?.lastOS ? 1 : 0),
+      firstMs, lastMs,
+      lastDeviceType: stats?.lastDeviceType || "—",
+      lastBrowser:    stats?.lastBrowser    || "—",
+      lastOS:         stats?.lastOS         || "—",
+      lastIp:         stats?.lastIp         || "requiere_backend",
+    };
+  }
+
+  function renderAdminVisits(){
+    const box = document.getElementById("admin-visits-list");
+    const countEl = document.getElementById("admin-visits-count");
+    if(!box) return;
+
+    const q = (document.getElementById("admin-visits-search")?.value || "").trim().toLowerCase();
+    const sort = document.getElementById("admin-visits-sort")?.value || "last";
+
+    let rows = adminVisitsState.rows.slice();
+    if(q) rows = rows.filter(r => String(r.username||"").toLowerCase().includes(q));
+
+    const sorters = {
+      last:    (a,b) => (b.lastMs||0) - (a.lastMs||0),
+      active:  (a,b) => (b.activoMs||0) - (a.activoMs||0),
+      visits:  (a,b) => (b.visitas||0) - (a.visitas||0),
+      devices: (a,b) => (b.devices||0) - (a.devices||0),
+      alpha:   (a,b) => String(a.username||"").localeCompare(String(b.username||""),"es"),
+    };
+    rows.sort(sorters[sort] || sorters.last);
+
+    if(countEl){
+      const totalUsers = adminVisitsState.rows.length;
+      const activeUsers = adminVisitsState.rows.filter(r => r.visitas > 0).length;
+      countEl.textContent = `· ${rows.length}/${totalUsers} mostrados · ${activeUsers} con actividad`;
+    }
+
+    if(!rows.length){
+      box.innerHTML = "<div class='card'>Sin datos todavía.</div>";
+      return;
+    }
+
+    box.innerHTML = `<ul style="list-style:none;padding:0;margin:0;">` + rows.map(r => {
+      const alias = r.isAdmin ? "Administrador" : r.username;
+      const firstTxt = r.firstMs ? formatDateTime(new Date(r.firstMs).toISOString()) : "—";
+      const lastTxt  = r.lastMs  ? formatDateTime(new Date(r.lastMs).toISOString())  : "—";
+      return `<li style="padding:14px 0;border-bottom:1px solid #eee;">
+        <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="min-width:0;flex:1 1 260px;">
+            <button class="btn btn-soft" style="padding:8px 12px;" onclick="showUserSessions('${r.uid}')">${escapeHtml(alias)}</button>
+            <div style="color:#5c6f78;font-size:.88rem;margin-top:6px;">
+              ${r.devices} dispositivo${r.devices===1?"":"s"} · IP últ.: ${escapeHtml(r.lastIp)}
+            </div>
+            <div style="color:#5c6f78;font-size:.88rem;">
+              Últ. dispositivo: ${escapeHtml(r.lastDeviceType)} · ${escapeHtml(r.lastBrowser)} · ${escapeHtml(r.lastOS)}
+            </div>
+            <div style="color:#5c6f78;font-size:.82rem;margin-top:2px;">
+              Primera conexión: ${escapeHtml(firstTxt)} · Última: ${escapeHtml(lastTxt)}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div><strong>${formatNumber(r.visitas)}</strong> visitas</div>
+            <div style="color:#5c6f78;font-size:.92rem;">${formatNumber(r.sesiones)} sesiones · ${formatNumber(r.recargas)} recargas</div>
+            <div style="color:#5c6f78;font-size:.92rem;">${escapeHtml(formatDuration(r.activoMs))} activo acumulado</div>
+          </div>
+        </div>
+      </li>`;
+    }).join("") + `</ul>`;
+  }
+
   async function loadAdminVisits(){
     const box = document.getElementById("admin-visits-list");
     if(!box) return;
-
-    let listaContadores = "<ul><li>Cargando datos...</li></ul>";
+    box.innerHTML = "<div class='muted'>Cargando visitas…</div>";
 
     try{
-      const snapshot = await get(dbRef(db,"visitas"));
-      const datos = snapshot.exists() ? snapshot.val() : {};
-      const profilesSnap = await get(dbRef(db,"profiles"));
-      const profiles = profilesSnap.exists() ? profilesSnap.val() : {};
-
-      let items = "";
-      Object.values(profiles)
-        .sort((a,b)=>String(a.username||"").localeCompare(String(b.username||""),"es"))
-        .forEach(usuario=>{
-          const stats = datos?.[usuario.uid] || {};
-          const visitas = stats.total || 0;
-          const sesiones = stats.totalSessions || 0;
-          const recargas = stats.totalReloads || 0;
-          const activoMs = stats.totalActiveMs || 0;
-          const ultimoDispositivo = stats.lastDeviceType || "—";
-          const ultimoNavegador = stats.lastBrowser || "—";
-          const ultimoSO = stats.lastOS || "—";
-          const ultimaIP = stats.lastIp || "requiere_backend";
-          const aliasSeguro = isAdminProfile(usuario) ? "Administrador" : (usuario.username || "Tripulante");
-
-          items += `
-            <li style="padding:14px 0;border-bottom:1px solid #eee;list-style:none;">
-              <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
-                <div>
-                  <button class="btn btn-soft" style="padding:8px 12px;" onclick="showUserSessions('${usuario.uid}')">${escapeHtml(aliasSeguro)}</button>
-                  <div style="color:#5c6f78;font-size:.92rem;margin-top:6px;">
-                    IP: ${escapeHtml(ultimaIP)} · ${escapeHtml(ultimoDispositivo)} · ${escapeHtml(ultimoNavegador)} · ${escapeHtml(ultimoSO)}
-                  </div>
-                </div>
-                <div style="text-align:right;">
-                  <div><strong>${formatNumber(visitas)}</strong> visitas</div>
-                  <div style="color:#5c6f78;font-size:.92rem;">${formatNumber(sesiones)} sesiones · ${formatNumber(recargas)} recargas</div>
-                  <div style="color:#5c6f78;font-size:.92rem;">${escapeHtml(formatDuration(activoMs))} activo acumulado</div>
-                </div>
-              </div>
-            </li>
-          `;
-        });
-
-      if(!items) items = "<li><em>Sin datos todavía</em></li>";
-      listaContadores = `<ul style="list-style:none;padding:0;margin:0;">${items}</ul>`;
+      const [visitsSnap, profilesSnap] = await Promise.all([
+        get(dbRef(db,"visitas")),
+        get(dbRef(db,"profiles")),
+      ]);
+      const datos    = visitsSnap.exists()    ? visitsSnap.val()    : {};
+      const profiles = profilesSnap.exists()  ? profilesSnap.val()  : {};
+      adminVisitsState.rows = Object.values(profiles)
+        .map(u => buildVisitRow(u, datos?.[u.uid] || {}));
+      renderAdminVisits();
     }catch(e){
       console.error(e);
-      listaContadores = '<ul style="list-style:none;padding:0;margin:0;"><li><em>Error al cargar estadísticas</em></li></ul>';
+      showAdminError("admin-visits-list", e);
     }
-
-    box.innerHTML = listaContadores;
   }
 
   function showAuthMode(mode){
@@ -3059,20 +3115,52 @@
       </div>
       <div class="panel-body">
         <div class="card" style="margin-bottom:16px;">
-          <h4>Usuarios</h4>
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <h4 style="margin:0;">Usuarios <span id="admin-users-count" class="muted" style="font-weight:400;font-size:.85rem;"></span></h4>
+            <button class="btn btn-soft" onclick="loadAdminUsers()">↻ Recargar</button>
+          </div>
+          <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <input id="admin-users-search" placeholder="Buscar usuario, nombre, email…" style="flex:1 1 220px;" oninput="renderAdminUsers()">
+            <select id="admin-users-filter" style="flex:0 0 200px;" onchange="renderAdminUsers()">
+              <option value="all">Todos los usuarios</option>
+              <option value="pending">Pendientes (sin revisar)</option>
+              <option value="approved">Aprobados</option>
+              <option value="capped">Capados (acceso revocado)</option>
+              <option value="upload-off">Subida bloqueada</option>
+            </select>
+          </div>
           <div id="admin-users-list"></div>
         </div>
         <div class="card" style="margin-bottom:16px;">
-          <h4>Registro global en la nube</h4>
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <h4 style="margin:0;">Registro global en la nube <span id="admin-visits-count" class="muted" style="font-weight:400;font-size:.85rem;"></span></h4>
+            <button class="btn btn-soft" onclick="loadAdminVisits()">↻ Recargar</button>
+          </div>
+          <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <input id="admin-visits-search" placeholder="Buscar por usuario…" style="flex:1 1 220px;" oninput="renderAdminVisits()">
+            <select id="admin-visits-sort" style="flex:0 0 220px;" onchange="renderAdminVisits()">
+              <option value="last">Más recientes primero</option>
+              <option value="active">Más tiempo activo</option>
+              <option value="visits">Más visitas</option>
+              <option value="devices">Más dispositivos</option>
+              <option value="alpha">Alfabético</option>
+            </select>
+          </div>
           <div id="admin-visits-list"></div>
-          <div class="muted" style="margin-top:10px;">Se muestran sesiones, recargas, tiempo activo y dispositivo. La IP pública real requiere backend o Cloud Function.</div>
+          <div class="muted" style="margin-top:10px;">Se muestran sesiones, recargas, tiempo activo, dispositivos distintos y rango de conexión. La IP pública real requiere backend o Cloud Function.</div>
         </div>
         <div class="card" style="margin-bottom:16px;">
-          <h4>Moderación de archivos</h4>
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h4 style="margin:0;">Moderación de archivos</h4>
+            <button class="btn btn-soft" onclick="loadAdminFiles()">↻ Recargar</button>
+          </div>
           <div id="admin-files-list"></div>
         </div>
         <div class="card" style="margin-bottom:16px;">
-          <h4>Moderación de sala común</h4>
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h4 style="margin:0;">Moderación de sala común</h4>
+            <button class="btn btn-soft" onclick="loadAdminCommonMessages()">↻ Recargar</button>
+          </div>
           <div id="admin-common-list"></div>
         </div>
         <div class="card">
@@ -3724,17 +3812,148 @@
     }
   }
 
+  // Pinta un error legible (con ayuda específica si es PERMISSION_DENIED)
+  function showAdminError(boxId, err){
+    const box = document.getElementById(boxId);
+    if(!box) return;
+    const code = err?.code || err?.name || "Error";
+    const msg  = err?.message || String(err);
+    const isPerm = /permission/i.test(code) || /permission/i.test(msg);
+    box.innerHTML = `<div class="card" style="border-left:4px solid #c0392b;background:#fff5f5;">
+      <strong style="color:#c0392b;">No se pudo cargar</strong>
+      <div class="muted" style="margin-top:4px;">${escapeHtml(code)}</div>
+      <pre style="white-space:pre-wrap;margin:8px 0;font-size:.82rem;">${escapeHtml(msg)}</pre>
+      ${isPerm ? `<div class="muted">Esto suele venir de reglas de Firebase: revisa que el admin tenga <code>.read</code> en el nodo padre correspondiente.</div>` : ""}
+    </div>`;
+  }
+
+  // Estado de la lista de usuarios para que filtros y búsqueda reutilicen los datos cargados
+  const adminUsersState = { profiles: [], visits: {} };
+
+  // Cuenta dispositivos distintos en las sesiones de un usuario (deviceType|browser|os)
+  function countDistinctDevices(visit){
+    const sessions = visit?.sessions ? Object.values(visit.sessions) : [];
+    const set = new Set();
+    for(const s of sessions){
+      set.add(`${s?.deviceType||"-"}|${s?.browser||"-"}|${s?.os||"-"}`);
+    }
+    // Fallback: si no hay sesiones pero sí lastDevice*, contar como 1
+    if(!set.size && (visit?.lastDeviceType || visit?.lastBrowser || visit?.lastOS)) return 1;
+    return set.size;
+  }
+
+  function userState(user){
+    if(user.approved) return "approved";
+    if(user.reviewedAt) return "capped";
+    return "pending";
+  }
+  function userStateLabel(state){
+    return state === "approved" ? "Aprobado"
+         : state === "capped"   ? "Capado"
+         : "Pendiente";
+  }
+  function userStateClass(state){
+    return state === "approved" ? "on"
+         : state === "capped"   ? "off"
+         : "off";
+  }
+
+  function renderAdminUsers(){
+    const box = document.getElementById("admin-users-list");
+    const countEl = document.getElementById("admin-users-count");
+    if(!box) return;
+
+    const q = (document.getElementById("admin-users-search")?.value || "").trim().toLowerCase();
+    const filter = document.getElementById("admin-users-filter")?.value || "all";
+
+    let users = adminUsersState.profiles.slice();
+    if(q){
+      users = users.filter(u =>
+        String(u.username||"").toLowerCase().includes(q) ||
+        String(u.usernameSlug||"").toLowerCase().includes(q) ||
+        String(u.nombre||"").toLowerCase().includes(q) ||
+        String(u.apellidos||"").toLowerCase().includes(q) ||
+        String(u.email||"").toLowerCase().includes(q) ||
+        String(u.curso||"").toLowerCase().includes(q)
+      );
+    }
+    if(filter === "pending")    users = users.filter(u => userState(u) === "pending");
+    if(filter === "approved")   users = users.filter(u => userState(u) === "approved");
+    if(filter === "capped")     users = users.filter(u => userState(u) === "capped");
+    if(filter === "upload-off") users = users.filter(u => !u.canUpload);
+
+    if(countEl){
+      const total = adminUsersState.profiles.length;
+      const pend  = adminUsersState.profiles.filter(u => userState(u) === "pending").length;
+      const appr  = adminUsersState.profiles.filter(u => userState(u) === "approved").length;
+      const capp  = adminUsersState.profiles.filter(u => userState(u) === "capped").length;
+      countEl.textContent = `· ${users.length}/${total} mostrados · ${pend} pendientes · ${appr} aprobados · ${capp} capados`;
+    }
+
+    if(!users.length){
+      box.innerHTML = "<div class='card'>Sin resultados.</div>";
+      return;
+    }
+
+    box.innerHTML = users.map(user => {
+      const v = adminUsersState.visits[user.uid] || {};
+      const devices = countDistinctDevices(v);
+      const created = user.createdAt ? formatDateTime(user.createdAt) : "—";
+      const reviewed = user.reviewedAt ? formatDateTime(user.reviewedAt) : null;
+      const lastSeen = v.lastSeenAt ? formatDateTime(v.lastSeenAt) : (v.la ? formatDateTime(new Date(v.la).toISOString()) : "—");
+      const state = userState(user);
+      const stateLbl = userStateLabel(state);
+      const stateCls = userStateClass(state);
+      return `<div class="user-item" style="padding:12px 0;border-bottom:1px solid #eee;">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div style="min-width:0;flex:1 1 260px;">
+            <strong>@${escapeHtml(user.username||"")}</strong>
+            <div class="muted">${escapeHtml(user.nombre||"")} ${escapeHtml(user.apellidos||"")}</div>
+            <div class="muted">${escapeHtml(user.email||"")}</div>
+            <div class="muted">${escapeHtml(user.curso||"")} · ${escapeHtml(user.telefono||"")}</div>
+            <div class="muted" style="margin-top:6px;font-size:.82rem;">
+              Registrado: ${escapeHtml(created)}
+              ${reviewed ? ` · Última revisión: ${escapeHtml(reviewed)}` : ""}
+              · Últ. actividad: ${escapeHtml(lastSeen)}
+              · ${devices} dispositivo${devices===1?"":"s"} distinto${devices===1?"":"s"}
+            </div>
+          </div>
+          <div class="row" style="flex-wrap:wrap;">
+            <span class="pill ${stateCls}">${stateLbl}</span>
+            <span class="pill ${user.canUpload?"on":"off"}">${user.canUpload?"Puede subir":"Subida bloqueada"}</span>
+            <span class="pill ${user.publicVisible!==false?"on":"off"}">${user.publicVisible!==false?"Perfil visible":"Perfil oculto"}</span>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;flex-wrap:wrap;">
+          <button class="btn ${user.approved?"btn-danger":"btn-ok"}" onclick="toggleAccess('${user.uid}', ${user.approved?"false":"true"})">${user.approved?"Quitar acceso":"Dar acceso"}</button>
+          <button class="btn ${user.canUpload?"btn-danger":"btn-ok"}" onclick="toggleUpload('${user.uid}', ${user.canUpload?"false":"true"})">${user.canUpload?"Bloquear subidas":"Permitir subidas"}</button>
+          <button class="btn btn-soft" onclick="togglePublicProfile('${user.uid}', ${user.publicVisible!==false?"false":"true"})">${user.publicVisible!==false?"Ocultar perfil":"Mostrar perfil"}</button>
+          <button class="btn btn-soft" onclick="showUserSessions('${user.uid}')">Ver sesiones</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
   async function loadAdminUsers(){
     const box = document.getElementById("admin-users-list");
     if(!box) return;
+    box.innerHTML = "<div class='muted'>Cargando usuarios…</div>";
 
-    const snap = await get(dbRef(db,"profiles"));
-    const data = snap.exists() ? snap.val() : {};
-    const users = Object.values(data||{}).sort((a,b)=>Number(new Date(b.createdAt||0))-Number(new Date(a.createdAt||0)));
-
-    box.innerHTML = users.length
-      ? users.map(user=>`<div class="user-item"><div class="row" style="justify-content:space-between;align-items:flex-start;"><div><strong>@${escapeHtml(user.username||"")}</strong><div class="muted">${escapeHtml(user.nombre||"")} ${escapeHtml(user.apellidos||"")}</div><div class="muted">${escapeHtml(user.email||"")}</div><div class="muted">${escapeHtml(user.curso||"")} · ${escapeHtml(user.telefono||"")}</div></div><div class="row"><span class="pill ${user.approved?"on":"off"}">${user.approved?"Aprobado":"Bloqueado"}</span><span class="pill ${user.canUpload?"on":"off"}">${user.canUpload?"Puede subir":"Subida bloqueada"}</span></div></div><div class="row" style="margin-top:12px;"><button class="btn ${user.approved?"btn-danger":"btn-ok"}" onclick="toggleAccess('${user.uid}', ${user.approved?"false":"true"})">${user.approved?"Quitar acceso":"Dar acceso"}</button><button class="btn ${user.canUpload?"btn-danger":"btn-ok"}" onclick="toggleUpload('${user.uid}', ${user.canUpload?"false":"true"})">${user.canUpload?"Bloquear subidas":"Permitir subidas"}</button><button class="btn btn-soft" onclick="togglePublicProfile('${user.uid}', ${user.publicVisible!==false?"false":"true"})">${user.publicVisible!==false?"Ocultar perfil":"Mostrar perfil"}</button></div></div>`).join("")
-      : "<div class='card'>No hay usuarios registrados.</div>";
+    try{
+      const [profilesSnap, visitsSnap] = await Promise.all([
+        get(dbRef(db,"profiles")),
+        get(dbRef(db,"visitas")),
+      ]);
+      const profiles = profilesSnap.exists() ? profilesSnap.val() : {};
+      const visits   = visitsSnap.exists()   ? visitsSnap.val()   : {};
+      adminUsersState.profiles = Object.values(profiles||{})
+        .sort((a,b) => Number(new Date(b.createdAt||0)) - Number(new Date(a.createdAt||0)));
+      adminUsersState.visits = visits || {};
+      renderAdminUsers();
+    }catch(e){
+      console.error(e);
+      showAdminError("admin-users-list", e);
+    }
   }
 
   async function toggleAccess(uid,value){
@@ -3756,27 +3975,39 @@
   async function loadAdminFiles(){
     const box = document.getElementById("admin-files-list");
     if(!box) return;
+    box.innerHTML = "<div class='muted'>Cargando archivos…</div>";
 
-    const snap = await get(dbRef(db,"sharedFiles"));
-    const data = snap.exists() ? snap.val() : {};
-    const files = Object.values(data||{}).sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
+    try{
+      const snap = await get(dbRef(db,"sharedFiles"));
+      const data = snap.exists() ? snap.val() : {};
+      const files = Object.values(data||{}).sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
 
-    box.innerHTML = files.length
-      ? files.map(f=>`<div class="file-item"><div class="file-meta">@${escapeHtml(f.ownerUsername||"usuario")} · ${escapeHtml(formatDateTime(f.createdAt))}</div><strong>${escapeHtml(f.title||"Archivo")}</strong><div style="margin:8px 0;"><strong>Curso:</strong> ${escapeHtml(f.course||"—")} · <strong>Cuatrimestre:</strong> ${escapeHtml(f.semester||"—")} · <strong>Asignatura:</strong> ${escapeHtml(f.subject||"—")} · <strong>Tipo:</strong> ${escapeHtml(f.category||"—")}</div><div style="margin:8px 0;">${escapeHtml(f.description||"")}</div><div class="row"><span class="pill ${f.approved?"on":"off"}">${f.approved?"Aprobado":"Pendiente"}</span><span class="pill ${f.visible!==false?"on":"off"}">${f.visible!==false?"Visible":"Oculto"}</span></div><div class="row" style="margin-top:10px;"><a class="btn btn-dark" href="${f.url}" target="_blank" rel="noopener noreferrer">Abrir</a><button class="btn ${f.approved?"btn-soft":"btn-ok"}" onclick="setFileModeration('${f.id}', { approved: ${f.approved?"false":"true"} })">${f.approved?"Quitar aprobación":"Aprobar"}</button><button class="btn ${f.visible!==false?"btn-soft":"btn-ok"}" onclick="setFileModeration('${f.id}', { visible: ${f.visible!==false?"false":"true"} })">${f.visible!==false?"Ocultar":"Mostrar"}</button><button class="btn btn-danger" onclick="deleteSharedFile('${f.id}')">Borrar</button></div></div>`).join("")
-      : "<div class='card'>No hay archivos.</div>";
+      box.innerHTML = files.length
+        ? files.map(f=>`<div class="file-item"><div class="file-meta">@${escapeHtml(f.ownerUsername||"usuario")} · ${escapeHtml(formatDateTime(f.createdAt))}</div><strong>${escapeHtml(f.title||"Archivo")}</strong><div style="margin:8px 0;"><strong>Curso:</strong> ${escapeHtml(f.course||"—")} · <strong>Cuatrimestre:</strong> ${escapeHtml(f.semester||"—")} · <strong>Asignatura:</strong> ${escapeHtml(f.subject||"—")} · <strong>Tipo:</strong> ${escapeHtml(f.category||"—")}</div><div style="margin:8px 0;">${escapeHtml(f.description||"")}</div><div class="row"><span class="pill ${f.approved?"on":"off"}">${f.approved?"Aprobado":"Pendiente"}</span><span class="pill ${f.visible!==false?"on":"off"}">${f.visible!==false?"Visible":"Oculto"}</span></div><div class="row" style="margin-top:10px;"><a class="btn btn-dark" href="${f.url}" target="_blank" rel="noopener noreferrer">Abrir</a><button class="btn ${f.approved?"btn-soft":"btn-ok"}" onclick="setFileModeration('${f.id}', { approved: ${f.approved?"false":"true"} })">${f.approved?"Quitar aprobación":"Aprobar"}</button><button class="btn ${f.visible!==false?"btn-soft":"btn-ok"}" onclick="setFileModeration('${f.id}', { visible: ${f.visible!==false?"false":"true"} })">${f.visible!==false?"Ocultar":"Mostrar"}</button><button class="btn btn-danger" onclick="deleteSharedFile('${f.id}')">Borrar</button></div></div>`).join("")
+        : "<div class='card'>No hay archivos.</div>";
+    }catch(e){
+      console.error(e);
+      showAdminError("admin-files-list", e);
+    }
   }
 
   async function loadAdminCommonMessages(){
     const box = document.getElementById("admin-common-list");
     if(!box) return;
+    box.innerHTML = "<div class='muted'>Cargando mensajes…</div>";
 
-    const snap = await get(dbRef(db,"commonRoom"));
-    const data = snap.exists() ? snap.val() : {};
-    const messages = Object.entries(data||{}).map(([id,val])=>({id,...val})).sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0)).slice(0,100);
+    try{
+      const snap = await get(dbRef(db,"commonRoom"));
+      const data = snap.exists() ? snap.val() : {};
+      const messages = Object.entries(data||{}).map(([id,val])=>({id,...val})).sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0)).slice(0,100);
 
-    box.innerHTML = messages.length
-      ? messages.map(m=>`<div class="msg-item"><div class="msg-meta">@${escapeHtml(m.fromUsername||"usuario")} · ${escapeHtml(formatDateTime(m.createdAt))}</div><div class="msg-text">${escapeHtml(m.text||"")}</div><div class="row" style="margin-top:10px;"><button class="btn btn-danger" onclick="deleteCommonMessage('${m.id}')">Borrar mensaje</button></div></div>`).join("")
-      : "<div class='card'>No hay mensajes en la taberna.</div>";
+      box.innerHTML = messages.length
+        ? messages.map(m=>`<div class="msg-item"><div class="msg-meta">@${escapeHtml(m.fromUsername||"usuario")} · ${escapeHtml(formatDateTime(m.createdAt))}</div><div class="msg-text">${escapeHtml(m.text||"")}</div><div class="row" style="margin-top:10px;"><button class="btn btn-danger" onclick="deleteCommonMessage('${m.id}')">Borrar mensaje</button></div></div>`).join("")
+        : "<div class='card'>No hay mensajes en la taberna.</div>";
+    }catch(e){
+      console.error(e);
+      showAdminError("admin-common-list", e);
+    }
   }
 
   async function deleteCommonMessage(id){
@@ -4158,6 +4389,11 @@
   window.loadAdminPrivateConversation = loadAdminPrivateConversation;
   window.deletePrivateMessage = deletePrivateMessage;
   window.loadAdminVisits = loadAdminVisits;
+  window.renderAdminVisits = renderAdminVisits;
+  window.loadAdminUsers = loadAdminUsers;
+  window.renderAdminUsers = renderAdminUsers;
+  window.loadAdminFiles = loadAdminFiles;
+  window.loadAdminCommonMessages = loadAdminCommonMessages;
   window.showUserSessions = showUserSessions;
   window.openView = openView;
   window.openInWorkspace = openInWorkspace;
