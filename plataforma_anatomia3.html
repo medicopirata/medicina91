@@ -633,9 +633,9 @@ const App = {
     const isExtra  = q => q.id >= EXTRA_START_ID;
 
     const sortTopics = (names) => names.sort((a, b) => {
-      const isSerie = s => s.startsWith('Serie');
-      if (isSerie(a) && !isSerie(b)) return 1;
-      if (!isSerie(a) && isSerie(b)) return -1;
+      const cat = s => s.startsWith('Tema') ? 0 : s.startsWith('Práctica') ? 1 : s.startsWith('Serie') ? 3 : 2;
+      const ca = cat(a), cb = cat(b);
+      if (ca !== cb) return ca - cb;
       const numA = parseInt((a.match(/\d+/) || ['9999'])[0], 10);
       const numB = parseInt((b.match(/\d+/) || ['9999'])[0], 10);
       return numA - numB || a.localeCompare(b);
@@ -776,9 +776,9 @@ const App = {
   openTopicSelector() {
     const list = document.getElementById('sel-topics-list');
     const topicNames = [...new Set(ALL_QUESTIONS.map(q => q.topicBase))].sort((a, b) => {
-      const isSerie = s => s.startsWith('Serie');
-      if (isSerie(a) && !isSerie(b)) return 1;
-      if (!isSerie(a) && isSerie(b)) return -1;
+      const cat = s => s.startsWith('Tema') ? 0 : s.startsWith('Práctica') ? 1 : s.startsWith('Serie') ? 3 : 2;
+      const ca = cat(a), cb = cat(b);
+      if (ca !== cb) return ca - cb;
       const numA = parseInt((a.match(/\d+/) || ['9999'])[0], 10);
       const numB = parseInt((b.match(/\d+/) || ['9999'])[0], 10);
       return numA - numB || a.localeCompare(b);
@@ -1230,9 +1230,9 @@ const App = {
   showStats() {
     const qs = State.data.qs;
     const topicNames = [...new Set(ALL_QUESTIONS.map(q => q.topicBase))].sort((a, b) => {
-      const isSerie = s => s.startsWith('Serie');
-      if (isSerie(a) && !isSerie(b)) return 1;
-      if (!isSerie(a) && isSerie(b)) return -1;
+      const cat = s => s.startsWith('Tema') ? 0 : s.startsWith('Práctica') ? 1 : s.startsWith('Serie') ? 3 : 2;
+      const ca = cat(a), cb = cat(b);
+      if (ca !== cb) return ca - cb;
       const numA = parseInt((a.match(/\d+/) || ['9999'])[0], 10);
       const numB = parseInt((b.match(/\d+/) || ['9999'])[0], 10);
       return numA - numB || a.localeCompare(b);
@@ -1264,9 +1264,9 @@ const App = {
   exportStats() {
     const qs = State.data.qs;
     const topicNames = [...new Set(ALL_QUESTIONS.map(q => q.topicBase))].sort((a, b) => {
-      const isSerie = s => s.startsWith('Serie');
-      if (isSerie(a) && !isSerie(b)) return 1;
-      if (!isSerie(a) && isSerie(b)) return -1;
+      const cat = s => s.startsWith('Tema') ? 0 : s.startsWith('Práctica') ? 1 : s.startsWith('Serie') ? 3 : 2;
+      const ca = cat(a), cb = cat(b);
+      if (ca !== cb) return ca - cb;
       const numA = parseInt((a.match(/\d+/) || ['9999'])[0], 10);
       const numB = parseInt((b.match(/\d+/) || ['9999'])[0], 10);
       return numA - numB || a.localeCompare(b);
