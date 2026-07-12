@@ -66,12 +66,6 @@
     .topic-card.flagged-examen:hover { border-color: #f87171; background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08)); }
     .topic-card.flagged-examen .topic-info .name::before { content: "🔥 "; }
 
-    #topics-grid-tronco .topic-card { border-color: rgba(96,165,250,0.25); }
-    #topics-grid-tronco .topic-card:hover { border-color: #60a5fa; background: var(--surface2); }
-    #topics-grid-tronco .progress-bar-fill { background: #60a5fa; }
-    #topics-grid-extra .topic-card { border-color: rgba(167,139,250,0.25); }
-    #topics-grid-extra .topic-card:hover { border-color: #a78bfa; background: var(--surface2); }
-    #topics-grid-extra .progress-bar-fill { background: #a78bfa; }
     .topic-info { flex: 1; min-width: 0; }
     .topic-info .name { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .topic-info .count { font-size: 0.75rem; color: var(--text2); }
@@ -337,19 +331,6 @@
   </div>
 
 
-  <div class="topics-section" style="margin-top:32px">
-    <p class="section-title" style="color:#60a5fa;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:14px">
-      📘 Tronco y Esplacnología · <span id="tronco-count" style="color:var(--text2);font-weight:400"></span>
-    </p>
-    <div class="topics-grid" id="topics-grid-tronco"></div>
-  </div>
-
-  <div class="topics-section" style="margin-top:32px">
-    <p class="section-title" style="color:#a78bfa;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:14px">
-      📋 Banco Extra · <span id="extra-count" style="color:var(--text2);font-weight:400"></span>
-    </p>
-    <div class="topics-grid" id="topics-grid-extra"></div>
-  </div>
 </div>
 
 <!-- ======== TOPIC SELECTOR ======== -->
@@ -626,12 +607,6 @@ const App = {
   renderTopicsGrid() {
     const qs = State.data.qs;
 
-    const TRONCO_START_ID = 3045;
-    const EXTRA_START_ID  = 4000;
-    const isMain   = q => q.id < TRONCO_START_ID;
-    const isTronco = q => q.id >= TRONCO_START_ID && q.id < EXTRA_START_ID;
-    const isExtra  = q => q.id >= EXTRA_START_ID;
-
     const sortTopics = (names) => names.sort((a, b) => {
       const cat = s => s.startsWith('Tema') ? 0 : s.startsWith('Práctica') ? 1 : s.startsWith('Serie') ? 3 : 2;
       const ca = cat(a), cb = cat(b);
@@ -675,22 +650,9 @@ const App = {
       </div>`;
     };
 
-    // Temas principales
-    const mainTopics = sortTopics([...new Set(ALL_QUESTIONS.filter(isMain).map(q => q.topicBase))]);
+    // Temas
+    const mainTopics = sortTopics([...new Set(ALL_QUESTIONS.map(q => q.topicBase))]);
     document.getElementById('topics-grid').innerHTML = mainTopics.map(buildCard).join('');
-
-
-    // Tronco y Esplacnología
-    const troncoTopics = sortTopics([...new Set(ALL_QUESTIONS.filter(isTronco).map(q => q.topicBase))]);
-    const troncoTotal = ALL_QUESTIONS.filter(isTronco).length;
-    document.getElementById('tronco-count').textContent = `${troncoTotal} preguntas`;
-    document.getElementById('topics-grid-tronco').innerHTML = troncoTopics.map(buildCard).join('');
-
-    // Banco Extra
-    const extraTopics = sortTopics([...new Set(ALL_QUESTIONS.filter(isExtra).map(q => q.topicBase))]);
-    const extraTotal = ALL_QUESTIONS.filter(isExtra).length;
-    document.getElementById('extra-count').textContent = `${extraTotal} preguntas`;
-    document.getElementById('topics-grid-extra').innerHTML = extraTopics.map(buildCard).join('');
   },
 
   startSingleTopic(topic) {
