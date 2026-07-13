@@ -146,6 +146,22 @@
         .icon-atlas::before { content: "📖"; }
         .icon-histo::before { content: "🔬"; }
 
+        .curso-titulo {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 45px 0 22px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--accent);
+            letter-spacing: -0.5px;
+        }
+        .curso-titulo:first-of-type { margin-top: 0; }
+        .curso-titulo .curso-badge {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -156,8 +172,33 @@
             <p class="subtitle">Repositorio de Anatomía II, Bioquímica y Fisiología Humana</p>
         </header>
 
+        <h2 class="curso-titulo">Segundo <span class="curso-badge">2º curso · 1er cuatrimestre</span></h2>
         <div class="grid">
-            
+            <div class="category-card">
+                <h2><span class="icon-quiz"></span> Anatomía 3 (Neuroanatomía)</h2>
+                <ul class="file-list">
+                    <li class="file-item">
+                        <a href="plataforma_anatomia3.html" target="_blank" rel="noopener noreferrer" class="file-link anato-link" style="border-left: 3px solid var(--color-anato); background: #f0f8ff;">
+                            Plataforma de Anatomía 3 · 1312 preguntas <span class="badge" style="background:var(--color-anato); color:white;">NUEVO</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="category-card">
+                <h2><span class="icon-fisio"></span> Fisiología Humana I</h2>
+                <ul class="file-list">
+                    <li class="file-item">
+                        <a href="plataforma_fisio1.html" target="_blank" rel="noopener noreferrer" class="file-link fisio-link" style="border-left: 3px solid var(--color-fisio); background: #fffaf0;">
+                            Plataforma de Fisiología I · 523 preguntas <span class="badge" style="background:var(--color-fisio); color:white;">NUEVO</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <h2 class="curso-titulo">Primero <span class="curso-badge">1er curso</span></h2>
+        <div class="grid">
             <div class="category-card">
                 <h2><span class="icon-quiz"></span> Anatomía Humana II</h2>
                 <ul class="file-list">
@@ -189,28 +230,6 @@
                     <li class="file-item" style="margin-top: 15px;">
                         <a href="porrero.html" class="file-link anato-link">
                             <span class="icon-atlas"></span> Atlas García-Porrero <span class="badge">INTERACTIVO</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="category-card">
-                <h2><span class="icon-quiz"></span> Anatomía 3 (Neuroanatomía)</h2>
-                <ul class="file-list">
-                    <li class="file-item">
-                        <a href="plataforma_anatomia3.html" target="_blank" rel="noopener noreferrer" class="file-link anato-link" style="border-left: 3px solid var(--color-anato); background: #f0f8ff;">
-                            Plataforma de Anatomía 3 · 1312 preguntas <span class="badge" style="background:var(--color-anato); color:white;">NUEVO</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="category-card">
-                <h2><span class="icon-fisio"></span> Fisiología Humana I</h2>
-                <ul class="file-list">
-                    <li class="file-item">
-                        <a href="plataforma_fisio1.html" target="_blank" rel="noopener noreferrer" class="file-link fisio-link" style="border-left: 3px solid var(--color-fisio); background: #fffaf0;">
-                            Plataforma de Fisiología I · 523 preguntas <span class="badge" style="background:var(--color-fisio); color:white;">NUEVO</span>
                         </a>
                     </li>
                 </ul>
@@ -293,9 +312,7 @@
                     </li>
                 </ul>
             </div>
-
         </div>
-
         <footer>
             &copy; 2026 Médico Pirata · Acceso Restringido para Estudiantes de Medicina
         </footer>
