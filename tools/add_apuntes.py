@@ -17,7 +17,7 @@ ID_BASE = 90000
 SECTION_JS = ("SECTIONS.unshift({id:'apuntes', title:'\U0001F4D3 Apuntes de clase', "
               "color:'#34d399', first:true, match: t => t.startsWith('Apuntes:')});")
 ETIQUETA = {
-    "A": "\U0001F393 Dicha por el profesor.",
+    "A": "\U0001F393 Dicha en clase.",
     "B": "\U0001F4CC Deducida de sus pistas.",
     "C": "\U0001F916 Propuesta por Claude, no dicha en clase.",
     "D": "\U0001F5BC️ Pregunta con imagen.",
