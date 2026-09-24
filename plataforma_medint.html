@@ -461,6 +461,7 @@
 
   
 
+  <div id="apuntes-sections"></div>
   <div class="topics-section" style="margin-top:28px">
     <p class="section-title">Temas · Haz clic para estudiar solo ese tema</p>
     <div class="topics-grid" id="topics-grid"></div>
@@ -935,6 +936,7 @@ function esc(s) {
 const TOPIC_CAT = s => s.startsWith('📚') ? 1 : s.startsWith('💻') ? 2 : s.startsWith('🖼') ? 3 : s.startsWith('📝') ? 4 : 0;
 // Secciones adicionales de la portada: {id, title, color, match(nombreDeBanco), strip}
 const SECTIONS = [];
+SECTIONS.unshift({id:'apuntes', title:'📓 Apuntes de clase', color:'#34d399', first:true, match: t => t.startsWith('Apuntes:')});
 // Rasgos propios de cada asignatura
 const FEATURES = Object.assign({
   dupStar: false,          // ⭐ en las preguntas/bancos marcados con dup
@@ -1226,8 +1228,7 @@ const App = {
     document.getElementById('topics-grid').innerHTML = mainTopics.map(buildCard).join('');
 
     // Secciones adicionales
-    const extra = document.getElementById('extra-sections');
-    extra.innerHTML = SECTIONS.map(s => {
+    const renderSections = list => list.map(s => {
       const names = sortTopicNames(TOPIC_NAMES.filter(t => sectionOf(t) === s));
       if (!names.length) return '';
       const total = names.reduce((n, t) => n + (BY_TOPIC.get(t) || []).length, 0);
@@ -1236,6 +1237,9 @@ const App = {
         <div class="topics-grid">${names.map(buildCard).join('')}</div>
       </div>`;
     }).join('');
+    const apuntesEl = document.getElementById('apuntes-sections');
+    if (apuntesEl) apuntesEl.innerHTML = renderSections(SECTIONS.filter(s => s.first));
+    document.getElementById('extra-sections').innerHTML = renderSections(SECTIONS.filter(s => !s.first));
   },
 
   startSingleTopic(topic) {
