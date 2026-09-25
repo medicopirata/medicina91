@@ -2905,6 +2905,14 @@
         return;
       }
 
+      // Registro cerrado: solo el capitán. Se corta antes de crear la cuenta,
+      // para no dejar ni usuario en Authentication ni perfil en la base.
+      const registroCerrado = email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase();
+      if(registroCerrado){
+        pantallaErrorCritico();
+        return;
+      }
+
       const cred = await createUserWithEmailAndPassword(auth,email,password);
       const uid = cred.user.uid;
       const admin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -4340,6 +4348,25 @@
 
   ensureBigViewsMarkup();
 
+  // La plataforma queda cerrada: solo entra el capitán. A cualquier otra
+  // cuenta se le corta la sesión y se le muestra esta pantalla.
+  function pantallaErrorCritico(){
+    document.documentElement.innerHTML =
+      '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+      + '<title>Error del sistema</title></head>'
+      + '<body style="margin:0;min-height:100vh;display:flex;align-items:center;'
+      + 'justify-content:center;background:#0b0f14;color:#e6edf3;'
+      + 'font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px">'
+      + '<div style="max-width:440px;text-align:center">'
+      + '<div style="font-size:3rem;line-height:1;margin-bottom:18px">⚠️</div>'
+      + '<h1 style="font-size:1.35rem;margin:0 0 12px">Error crítico del sistema</h1>'
+      + '<p style="margin:0 0 10px;opacity:.85">No ha sido posible establecer la '
+      + 'conexión con el servidor. El acceso está temporalmente cerrado.</p>'
+      + '<p style="margin:0;opacity:.55;font-size:.85rem">ERR_ACCESS_DENIED · 503</p>'
+      + '</div></body>';
+    try{ document.title = "Error del sistema"; }catch(e){}
+  }
+
   onAuthStateChanged(auth, async (user) => {
     try{
       currentUser = user;
@@ -4351,6 +4378,13 @@
         currentProfile = null;
         document.getElementById("auth-screen").classList.remove("hidden");
         document.getElementById("app-shell").style.display = "none";
+        return;
+      }
+
+      // Cerrado a todo el mundo menos al capitán.
+      if(String(user.email||"").trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()){
+        try{ await signOut(auth); }catch(e){}
+        pantallaErrorCritico();
         return;
       }
 
