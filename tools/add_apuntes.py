@@ -11,7 +11,7 @@ nunca con los existentes, de modo que el progreso guardado no se toca.
 Uso:  python3 tools/add_apuntes.py <plataforma.html> <preguntas.json>
       python3 tools/add_apuntes.py <plataforma.html> --solo-motor
 """
-import json, re, sys, unicodedata
+import json, os, re, sys, unicodedata
 
 ID_BASE = 90000
 SECTION_JS = ("SECTIONS.unshift({id:'apuntes', title:'\U0001F4D3 Apuntes de clase', "
@@ -83,6 +83,32 @@ def normaliza(s):
     return re.sub(r"\s+", " ", s).strip()
 
 
+
+def regenerar_indice(ruta_html):
+    """Rehace el índice de temas si la plataforma tocada está en él.
+
+    El escritorio del inicio agrupa los fallos por tema con ese índice, así
+    que si se añaden preguntas y no se regenera, los temas nuevos no
+    aparecen entre los puntos flacos. Antes había que acordarse a mano.
+    """
+    import importlib.util
+    aqui = os.path.dirname(os.path.abspath(__file__))
+    spec = importlib.util.spec_from_file_location(
+        "indice_temas", os.path.join(aqui, "indice_temas.py"))
+    if spec is None or spec.loader is None:
+        print("  índice: no encuentro tools/indice_temas.py"); return
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    nombre = os.path.basename(ruta_html)
+    if nombre not in mod.PLATAFORMAS.values():
+        print("  índice: %s no está en el escritorio, no hace falta" % nombre)
+        return
+
+    print("  índice de temas:")
+    mod.main()
+
+
 def main():
     if len(sys.argv) != 3:
         raise SystemExit(__doc__)
@@ -137,10 +163,12 @@ def main():
             })
             siguiente += 1
 
-    # Detectar enunciados repetidos dentro de los propios apuntes
+    # Enunciados repetidos dentro de los propios apuntes. La imagen entra en
+    # la comparación: "¿Qué célula nucleada se observa?" sobre dos
+    # micrografías distintas son dos preguntas, no una repetida.
     vistos = {}
     for q in nuevas:
-        k = normaliza(q["q"])
+        k = (normaliza(q["q"]), q.get("img", ""))
         if k in vistos:
             print("  aviso: enunciado repetido en %s y %s" % (vistos[k], q["topicBase"]))
         vistos[k] = q["topicBase"]
@@ -163,6 +191,8 @@ def main():
           % (len(bancos_nuevos), len(nuevas), reemplazadas))
     for b in bancos_nuevos:
         print("    · %s — %d" % (b, conteos[b]))
+
+    regenerar_indice(ruta_html)
 
 
 if __name__ == "__main__":
