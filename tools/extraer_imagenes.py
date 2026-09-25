@@ -29,8 +29,9 @@ def main():
     xml = ""
     for ruta in sys.argv[1:]:
         b = open(ruta, encoding="utf-8").read()
-        if b.lstrip().startswith("["):          # salida envuelta en lista
-            b = json.loads(b)[0]["text"]
+        if b.lstrip().startswith("["):          # salida envuelta en varios fragmentos
+            b = next(t["text"] for t in json.loads(b)
+                     if t.get("text", "").lstrip().startswith("{"))
         xml += json.loads(b)["data"]["xml"] if b.lstrip().startswith("{") else b
 
     # bloques en orden, guardando el blob si lo llevan
