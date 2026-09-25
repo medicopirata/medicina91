@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <script src="escritorio.js"></script>
+<script src="catalogo.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#123447" />
@@ -1517,6 +1518,28 @@
     .esc-flojo-txt{display:flex;flex-direction:column;min-width:0}
     .esc-flojo-txt strong{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .esc-flojo-txt em{font-style:normal;font-size:.76rem;opacity:.6}
+  
+    /* ===== Catálogo de la bitácora ===== */
+    .cat-actual{font-style:normal;font-size:.7rem;background:#2a9d8f;color:#fff;
+      border-radius:20px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+    .cat-bloque{margin:16px 0 6px}
+    .cat-bloque h4{margin:0 0 9px;font-size:.82rem;text-transform:uppercase;
+      letter-spacing:.06em;opacity:.55}
+    .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+    .cat-card{display:flex;flex-direction:column;gap:3px;padding:14px;border-radius:12px;
+      background:#fff;border:1px solid #e3d9c6;border-left:4px solid var(--c,#123447);
+      text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s}
+    .cat-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(18,52,71,.10)}
+    .cat-card.pendiente{opacity:.5;cursor:default;border-left-style:dashed}
+    .cat-card.pendiente:hover{transform:none;box-shadow:none}
+    .cat-emoji{font-size:1.5rem;line-height:1}
+    .cat-nom{font-weight:650;font-size:.93rem;line-height:1.25}
+    .cat-pie{font-size:.75rem;opacity:.6}
+    @media(max-width:700px){
+      .cat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+      .cat-card{padding:11px}
+      .cat-nom{font-size:.85rem}
+    }
   </style>
 </head>
 <body>
@@ -1807,57 +1830,7 @@
             </div>
 
             <div class="main-content">
-              <div class="course-section">
-                <div class="course-title" style="color: var(--curso1-color); border-left: 6px solid var(--curso1-color);">Primero</div>
-                <div class="semester-grid" id="grid-primero">
-                  <a href="#" class="semester-card" style="color: var(--curso1-color);" onclick="openInWorkspace('index primero primer cuatrimestre.html','Primero · 1er Cuatrimestre'); return false;">
-                    <div class="card-topline">
-                      <div class="icon">📚</div>
-                      <div class="nav-label">Abrir derrota</div>
-                    </div>
-                    <h3>1er Cuatrimestre</h3>
-                    <p>Anatomía I, Biología, Física y demás cartas de navegación inicial.</p>
-                    <div class="enter-text">Entrar al cuaderno →</div>
-                  </a>
-
-                  <a href="#" class="semester-card" style="color: var(--curso1-color);" onclick="openInWorkspace('indice segundo cuatri de preimero.html','Primero · 2do Cuatrimestre'); return false;">
-                    <div class="card-topline">
-                      <div class="icon">🦴</div>
-                      <div class="nav-label">Abrir derrota</div>
-                    </div>
-                    <h3>2do Cuatrimestre</h3>
-                    <p>Anatomía II, Histología y recursos del segundo tramo de travesía.</p>
-                    <div class="enter-text">Entrar al cuaderno →</div>
-                  </a>
-                </div>
-              </div>
-
-              <div class="course-section">
-                <div class="course-title" style="color: var(--curso2-color); border-left: 6px solid var(--curso2-color);">Segundo</div>
-                <div class="semester-grid">
-                  <a href="#" class="semester-card disabled" style="color: var(--curso2-color);">
-                    <div class="card-topline">
-                      <div class="icon">🔒</div>
-                      <div class="nav-label">En dique seco</div>
-                    </div>
-                    <h3>1er Cuatrimestre</h3>
-                    <p>No disponible aún. Esta ruta sigue en preparación.</p>
-                    <div class="enter-text">Próximamente</div>
-                  </a>
-
-                  <a href="#" class="semester-card disabled" style="color: var(--curso2-color);">
-                    <div class="card-topline">
-                      <div class="icon">🔒</div>
-                      <div class="nav-label">En dique seco</div>
-                    </div>
-                    <h3>2do Cuatrimestre</h3>
-                    <p>No disponible aún. Se habilitará cuando la travesía esté lista.</p>
-                    <div class="enter-text">Próximamente</div>
-                  </a>
-                </div>
-              </div>
-
-              <div id="study-admin-zone-anchor"></div>
+              <div id="catalogo-estudio"></div>
             </div>
           </div>
 
@@ -2100,7 +2073,6 @@
   const ZONAS = {
     estudio: "Bitácora de estudio",
     mir:     "MIR",
-    capitan: "Zona del capitán",
   };
 
   function tieneZona(zona){
@@ -2644,38 +2616,7 @@
     showFloatingToast("Cargo destacado", "Tu rango acaba de lucirse en cubierta.");
   }
 
-  function setStudyAdminZoneHtml(){
-    const anchor = document.getElementById("study-admin-zone-anchor");
-    if(!anchor) return;
-
-    const old = document.getElementById("study-admin-zone");
-    if(old) old.remove();
-    // Antes solo la veía el capitán; ahora es una zona que se puede conceder.
-    if(!tieneZona("capitan")) return;
-
-    anchor.insertAdjacentHTML("beforebegin", `
-      <div class="course-section" id="study-admin-zone">
-        <div class="course-title" style="color: var(--privado-color); border-left: 6px solid var(--privado-color);">
-          Zona del capitán
-        </div>
-
-        <div class="semester-grid">
-          <a href="#" class="semester-card" style="color: var(--privado-color);" onclick="openInWorkspace('parteprivada.html','Zona del capitán · Panel de Control'); return false;">
-            <div class="card-topline">
-              <div class="icon">🛡️</div>
-              <div class="nav-label">Acceso reservado</div>
-            </div>
-            <h3>Panel de control privado</h3>
-            <p>Acceso directo al archivo privado subido por el capitán.</p>
-            <div class="enter-text">Abrir archivo →</div>
-          </a>
-        </div>
-      </div>
-    `);
-  }
-
   async function renderStudyAdminZone(){
-    setStudyAdminZoneHtml();
     if(isAdmin()) await loadAdminVisits();
   }
 
@@ -4294,6 +4235,10 @@
     setActiveNavState(name);
 
     if(name==="home") cargarEscritorio();
+    if(name==="study"){
+      const cat = document.getElementById("catalogo-estudio");
+      if(cat && typeof construirCatalogo === "function") cat.innerHTML = construirCatalogo();
+    }
     if(name==="profile") setApprovalBox(currentProfile);
     if(name==="profiles") await loadPublicProfiles();
     if(name==="common"){ await loadCommonMessages(true); startCommonAuto(); }
