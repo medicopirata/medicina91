@@ -224,5 +224,69 @@
     return html;
   };
 
+
+  /* ---- Temas flojos ----------------------------------------------------
+     El progreso solo guarda el id de la pregunta. indice_temas.json dice, en
+     rangos, a qué tema pertenece cada id; con eso se agrupan los aciertos por
+     tema sin tener que cargar las plataformas enteras. */
+
+  function temaDe(indice, id){
+    var r = indice.r, ini = 0, fin = r.length - 1;
+    while (ini <= fin) {                       // los rangos vienen ordenados
+      var m = (ini + fin) >> 1;
+      if (id < r[m][0]) fin = m - 1;
+      else if (id > r[m][1]) ini = m + 1;
+      else return indice.t[r[m][2]];
+    }
+    return null;
+  }
+
+  var MIN_INTENTOS = 4;   // por debajo, el porcentaje no dice nada
+
+  function temasFlojos(progreso, indices, cuantos){
+    var acc = {};
+    ASIGNATURAS.forEach(function (a) {
+      var idx = indices[a.clave];
+      var qs = (progreso[a.clave] || {}).qs || {};
+      if (!idx) return;
+      for (var id in qs) {
+        var h = qs[id] && qs[id].h;
+        if (!h || !h.length) continue;
+        var tema = temaDe(idx, parseInt(id, 10));
+        if (!tema) continue;
+        var k = a.clave + "||" + tema;
+        if (!acc[k]) acc[k] = { asig: a, tema: tema, bien: 0, total: 0 };
+        for (var i = 0; i < h.length; i++) { acc[k].total++; if (h[i][1]) acc[k].bien++; }
+      }
+    });
+
+    return Object.keys(acc).map(function (k) { return acc[k]; })
+      .filter(function (t) { return t.total >= MIN_INTENTOS; })
+      .map(function (t) { t.pct = Math.round(t.bien * 100 / t.total); return t; })
+      .sort(function (a, b) { return a.pct - b.pct || b.total - a.total; })
+      .slice(0, cuantos || 8);
+  }
+
+  window.construirFlojos = function (progreso, indices) {
+    var flojos = temasFlojos(progreso || {}, indices || {}, 8);
+    if (!flojos.length) {
+      return '<div class="esc-flojos"><h4>Tus puntos flacos</h4>'
+        + '<p class="muted">Aún no hay suficientes respuestas para saberlo. '
+        + 'Con unas cuantas sesiones aparecerán aquí los temas que peor llevas.</p></div>';
+    }
+    var html = '<div class="esc-flojos"><h4>Tus puntos flacos</h4>'
+             + '<p class="muted">Los temas con menos aciertos. Toca uno y entras directo.</p>'
+             + '<div class="esc-flojos-lista">';
+    flojos.forEach(function (t) {
+      html += '<a class="esc-flojo" href="' + esc(t.asig.archivo)
+        + '#tema=' + encodeURIComponent(t.tema) + '">'
+        + '<span class="esc-flojo-pct' + (t.pct < 50 ? ' mal' : '') + '">' + t.pct + '%</span>'
+        + '<span class="esc-flojo-txt"><strong>' + esc(t.tema) + '</strong>'
+        + '<em>' + t.asig.emoji + ' ' + esc(t.asig.nombre) + ' · ' + t.total + ' respuestas</em></span>'
+        + '</a>';
+    });
+    return html + '</div></div>';
+  };
+
   window.ESCRITORIO_ASIGNATURAS = ASIGNATURAS;
 })();

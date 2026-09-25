@@ -2886,5 +2886,20 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<script>
+// Entrar directo a un tema desde el escritorio: plataforma.html#tema=<nombre>
+(function () {
+  function abrirTemaDelHash(){
+    var m = /[#&]tema=([^&]*)/.exec(location.hash || "");
+    if (!m) return;
+    var tema = decodeURIComponent(m[1].replace(/\+/g, " "));
+    if (typeof App === "undefined" || typeof App.startSingleTopic !== "function") return;
+    if (typeof BY_TOPIC === "undefined" || !BY_TOPIC.has(tema)) return;
+    App.startSingleTopic(tema);
+  }
+  // Se espera a que el motor haya montado la portada antes de saltar al tema.
+  window.addEventListener("load", function () { setTimeout(abrirTemaDelHash, 350); });
+})();
+</script>
 </body>
 </html>

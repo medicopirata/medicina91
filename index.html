@@ -1503,6 +1503,20 @@
       .esc-conv-fila{flex-direction:column;align-items:flex-start;gap:7px}
       .esc-conv-btn{flex:1 1 auto}
     }
+  
+    .esc-flojos{margin-top:16px;background:#fff;border:1px solid #e3d9c6;border-radius:14px;padding:16px}
+    .esc-flojos h4{margin:0 0 4px;font-size:1rem}
+    .esc-flojos .muted{margin:0 0 12px;font-size:.84rem}
+    .esc-flojos-lista{display:grid;gap:8px}
+    .esc-flojo{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #f0e9da;
+      border-radius:10px;text-decoration:none;color:inherit;background:#fffdf9}
+    .esc-flojo:hover{background:#faf6ee;border-color:#e3d9c6}
+    .esc-flojo-pct{flex:0 0 52px;text-align:center;font-weight:800;font-size:1.05rem;
+      color:#e9a23b;background:#fff7e8;border-radius:8px;padding:6px 0}
+    .esc-flojo-pct.mal{color:#c0392b;background:#fdeeea}
+    .esc-flojo-txt{display:flex;flex-direction:column;min-width:0}
+    .esc-flojo-txt strong{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .esc-flojo-txt em{font-style:normal;font-size:.76rem;opacity:.6}
   </style>
 </head>
 <body>
@@ -4220,6 +4234,16 @@
       const progreso = progSnap.exists() ? progSnap.val() : {};
       const examenes = examSnap.exists() ? examSnap.val() : {};
       destino.innerHTML = construirEscritorio(progreso, examenes);
+
+      // Los puntos flacos necesitan saber de qué tema es cada pregunta; eso
+      // viene en un índice aparte, pequeño, que se pide una sola vez.
+      if(!window._indiceTemas){
+        try{ window._indiceTemas = await fetch("indice_temas.json").then(r => r.json()); }
+        catch(e){ window._indiceTemas = {}; }
+      }
+      if(typeof construirFlojos === "function"){
+        destino.insertAdjacentHTML("beforeend", construirFlojos(progreso, window._indiceTemas));
+      }
     }catch(e){
       console.error("escritorio:", e);
       destino.innerHTML = '<div class="muted">No se ha podido cargar el progreso.</div>';
