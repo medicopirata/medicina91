@@ -95,6 +95,15 @@
     return Math.ceil((new Date(iso + "T00:00:00").getTime() - Date.now()) / DIA);
   }
 
+  /* De las dos convocatorias, la que toque. Si no se ha elegido, la de
+     enero, que es la ordinaria. */
+  function fechaExamen(ex){
+    if (!ex) return null;
+    if (ex.convocatoria === "no") return null;
+    if (ex.convocatoria === "junio") return ex.junio || null;
+    return ex.fecha || null;
+  }
+
   function esc(t){
     return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -113,7 +122,8 @@
         vence: vencidas(e),
         vistas: vistas(e),
         acierto: acierto(e),
-        dias: diasHasta(examenes[a.clave]),
+        ex: examenes[a.clave] || null,
+        dias: diasHasta(fechaExamen(examenes[a.clave])),
       };
     });
 
@@ -170,10 +180,13 @@
       html += '<a class="esc-fila" href="' + esc(f.def.archivo) + '">'
         + '<span class="esc-emoji">' + f.def.emoji + '</span>'
         + '<span class="esc-nom">' + esc(f.def.nombre)
-          + (f.dias != null
-              ? '<em class="esc-examen' + (f.dias <= 30 ? ' cerca' : '') + '">'
-                + (f.dias < 0 ? 'examen pasado' : f.dias + ' días para el examen') + '</em>'
-              : '')
+          + (f.ex && f.ex.convocatoria === "no"
+              ? '<em class="esc-examen">no te presentas</em>'
+              : f.dias != null
+                ? '<em class="esc-examen' + (f.dias <= 30 ? ' cerca' : '') + '">'
+                  + (f.dias < 0 ? 'examen pasado' : f.dias + ' días')
+                  + ' · ' + (f.ex && f.ex.convocatoria === "junio" ? 'junio' : 'enero') + '</em>'
+                : '')
           + '</span>'
         + '<span class="esc-barra"><i style="width:' + pct + '%"></i></span>'
         + '<span class="esc-cifras">' + f.vistas + '/' + f.def.total
@@ -182,7 +195,31 @@
           + (f.vence ? f.vence : '·') + '</span>'
         + '</a>';
     });
-    html += '</div></div>';
+    html += '</div>';
+
+    // ---- Convocatorias ---------------------------------------------------
+    html += '<details class="esc-conv"><summary>🗓️ A qué convocatoria me presento</summary>'
+         + '<div class="esc-conv-lista">';
+    filas.forEach(function (f) {
+      var ex = f.ex || {};
+      var elegida = ex.convocatoria || "enero";
+      html += '<div class="esc-conv-fila">'
+        + '<span>' + f.def.emoji + ' ' + esc(f.def.nombre)
+        + (ex.sigla ? ' <em class="esc-sigla">' + esc(ex.sigla) + '</em>' : '') + '</span>'
+        + '<span class="esc-conv-btns">'
+        + [["enero", ex.fecha], ["junio", ex.junio], ["no", null]].map(function (o) {
+            var val = o[0], fch = o[1];
+            var etq = val === "no" ? "No me presento"
+                    : (val === "enero" ? "Enero" : "Junio") + (fch ? ' · ' + fch.slice(8) + '/' + fch.slice(5,7) : '');
+            return '<button class="esc-conv-btn' + (elegida === val ? ' on' : '') + '"'
+                 + ' onclick="guardarConvocatoria(\'' + f.def.clave + '\',\'' + val + '\')">'
+                 + esc(etq) + '</button>';
+          }).join("")
+        + '</span></div>';
+    });
+    html += '</div></details>';
+
+    html += '</div>';
 
     return html;
   };

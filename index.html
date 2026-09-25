@@ -1483,6 +1483,26 @@
       .esc-tiras{gap:8px}
       .esc-t-num{font-size:1.4rem}
     }
+  
+    .esc-conv{margin-top:12px;background:#fff;border:1px solid #e3d9c6;border-radius:12px}
+    .esc-conv summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none}
+    .esc-conv summary::-webkit-details-marker{display:none}
+    .esc-conv summary::after{content:"▾";float:right;opacity:.5}
+    .esc-conv[open] summary::after{content:"▴"}
+    .esc-conv-lista{padding:0 16px 14px}
+    .esc-conv-fila{display:flex;justify-content:space-between;align-items:center;gap:12px;
+      padding:9px 0;border-top:1px solid #f0e9da;flex-wrap:wrap}
+    .esc-sigla{font-style:normal;font-size:.72rem;opacity:.5;border:1px solid #ddd2bb;
+      border-radius:5px;padding:1px 5px;margin-left:4px}
+    .esc-conv-btns{display:flex;gap:6px;flex-wrap:wrap}
+    .esc-conv-btn{font:inherit;font-size:.76rem;padding:5px 10px;border-radius:7px;cursor:pointer;
+      border:1px solid #ddd2bb;background:#fff;color:#123447}
+    .esc-conv-btn:hover{background:#faf6ee}
+    .esc-conv-btn.on{background:#123447;color:#fff;border-color:#123447;font-weight:600}
+    @media(max-width:700px){
+      .esc-conv-fila{flex-direction:column;align-items:flex-start;gap:7px}
+      .esc-conv-btn{flex:1 1 auto}
+    }
   </style>
 </head>
 <body>
@@ -4173,6 +4193,18 @@
   // Escritorio de estudio: reúne el progreso que cada plataforma guarda por
   // su cuenta en users/{uid}/… y lo enseña junto. El cálculo y el pintado
   // están en escritorio.js; aquí solo se traen los datos.
+  // Guarda a qué convocatoria te presentas de cada asignatura y repinta,
+  // para que la cuenta atrás use la fecha que toca.
+  async function guardarConvocatoria(clave, valor){
+    if(!currentUser) return;
+    try{
+      await update(dbRef(db, "examenes/" + currentUser.uid + "/" + clave), { convocatoria: valor });
+      await cargarEscritorio();
+      const det = document.querySelector("#escritorio-estudio .esc-conv");
+      if(det) det.open = true;     // dejarla abierta para seguir marcando
+    }catch(e){ console.error("convocatoria:", e); }
+  }
+
   async function cargarEscritorio(){
     const destino = document.getElementById("escritorio-estudio");
     if(!destino || !currentUser || typeof construirEscritorio !== "function") return;
@@ -4553,6 +4585,7 @@
   window.toggleUpload = toggleUpload;
   window.togglePublicProfile = togglePublicProfile;
   window.toggleZona = toggleZona;
+  window.guardarConvocatoria = guardarConvocatoria;
   window.deleteCommonMessage = deleteCommonMessage;
   window.loadAdminPrivateConversation = loadAdminPrivateConversation;
   window.deletePrivateMessage = deletePrivateMessage;
