@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icono-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Médico Pirata">
+<meta name="mobile-web-app-capable" content="yes">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fisiología — Plataforma de Estudio</title>
@@ -186,6 +192,36 @@
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+  
+    /* ===== Móvil: ajustes para usarla como aplicación en el teléfono ===== */
+    @media (max-width: 700px) {
+      /* La barra de sesión era position:fixed y se quedaba flotando sobre el
+         contenido al hacer scroll, tapando el título y las tarjetas. */
+      /* El position:fixed viene en un atributo style= del propio HTML, así que
+         hace falta !important para ganarle; si no, la regla no se aplica. */
+      #fb-bar { position: absolute !important; padding: 4px 10px !important; }
+      #fb-login-area button { font-size: 0.72rem !important; padding: 5px 11px !important; }
+
+      /* Las cinco tarjetas de estadísticas se comían la primera pantalla. */
+      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+      .stat-card { padding: 10px 6px; }
+      .stat-card .num { font-size: 1.4rem; }
+      .stat-card .lbl { font-size: 0.68rem; line-height: 1.25; }
+
+      /* Los modos de estudio caían en una sola columna: demasiado scroll
+         hasta llegar a los temas, que es a lo que se entra. */
+      .mode-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .mode-btn { padding: 12px 11px; }
+      .mode-btn .icon { font-size: 1.4rem; margin-bottom: 6px; }
+      .mode-btn .title { font-size: 0.86rem; }
+      .mode-btn .desc { font-size: 0.72rem; line-height: 1.3; }
+      /* "descartar" flotaba a la derecha y se amontonaba con el título
+         al estrechar la tarjeta a dos columnas. */
+      .mode-btn .discard { float: none; display: inline-block; font-size: 0.66rem;
+                           padding: 2px 6px; margin-top: 6px; }
+      /* El título cabe en una línea en pantallas de 390 px. */
+      .home-header h1 { font-size: 1.32rem; }
+    }
   </style>
 </head>
 <body>
@@ -1094,6 +1130,14 @@ document.addEventListener('keydown', e => {
     if (!sess.answers[q.id]) App.answer(idx);
   }
 });
+</script>
+<script>
+// Registro del service worker: sin él, Chrome no ofrece instalar la aplicación.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
 </script>
 </body>
 </html>
