@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script src="escritorio.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#123447" />
@@ -1446,6 +1447,42 @@
         max-width:none;
       }
     }
+  
+    /* ===== Escritorio de estudio ===== */
+    .esc-wrap{margin-bottom:26px}
+    .esc-hoy{background:#123447;color:#fff;border-radius:16px;padding:24px;text-align:center;margin-bottom:14px}
+    .esc-hoy-num{font-size:3.2rem;font-weight:800;line-height:1;color:#f0c674}
+    .esc-hoy-txt{opacity:.85;margin-top:4px}
+    .esc-btn{display:inline-block;margin-top:16px;background:#f0c674;color:#123447;font-weight:700;
+      padding:11px 20px;border-radius:10px;text-decoration:none}
+    .esc-btn:hover{filter:brightness(1.06)}
+    .esc-tiras{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .esc-tira{background:#fff;border:1px solid #e3d9c6;border-radius:12px;padding:14px;text-align:center}
+    .esc-tira.aviso{background:#fff6f3;border-color:#f0c0ae}
+    .esc-tira.aviso .esc-t-num{color:#e76f51}
+    .esc-t-num{display:block;font-size:1.7rem;font-weight:800;color:#123447}
+    .esc-t-lbl{font-size:.78rem;opacity:.65}
+    .esc-lista{background:#fff;border:1px solid #e3d9c6;border-radius:14px;overflow:hidden}
+    .esc-fila{display:grid;grid-template-columns:34px 1fr 90px auto 42px;align-items:center;gap:12px;
+      padding:13px 16px;border-bottom:1px solid #f0e9da;text-decoration:none;color:inherit}
+    .esc-fila:last-child{border-bottom:none}
+    .esc-fila:hover{background:#faf6ee}
+    .esc-emoji{font-size:1.3rem}
+    .esc-nom{font-weight:600}
+    .esc-examen{display:block;font-style:normal;font-size:.74rem;opacity:.6;font-weight:400}
+    .esc-examen.cerca{color:#c0392b;opacity:1;font-weight:600}
+    .esc-barra{height:7px;background:#eee5d3;border-radius:4px;overflow:hidden}
+    .esc-barra i{display:block;height:100%;background:#2a9d8f}
+    .esc-cifras{font-size:.78rem;opacity:.6;white-space:nowrap}
+    .esc-vence{text-align:center;font-weight:700;color:#cbbfa8}
+    .esc-vence.hay{color:#fff;background:#e76f51;border-radius:20px;padding:3px 0}
+    @media(max-width:700px){
+      .esc-fila{grid-template-columns:28px 1fr auto 38px;gap:8px;padding:12px}
+      .esc-barra{display:none}
+      .esc-hoy-num{font-size:2.6rem}
+      .esc-tiras{gap:8px}
+      .esc-t-num{font-size:1.4rem}
+    }
   </style>
 </head>
 <body>
@@ -1620,10 +1657,7 @@
           <button class="nav-btn active" data-view="home" onclick="openView('home')">🏠 Inicio</button>
           <button class="nav-btn" data-view="study" onclick="openView('study')">📚 Bitácora de estudio</button>
           <button class="nav-btn" data-view="profile" onclick="openView('profile')">👤 Mi perfil</button>
-          <button class="nav-btn" data-view="profiles" onclick="openView('profiles')">🌍 Perfiles públicos</button>
-          <button class="nav-btn" data-view="common" onclick="openView('common')">🍻 Taberna pirata</button>
-          <button class="nav-btn" data-view="private" onclick="openView('private')">✉️ Mensajes privados</button>
-          <button class="nav-btn" data-view="files" onclick="openView('files')">🏆🗃️ Compartir tesoros</button>
+          <button class="nav-btn" data-view="files" onclick="openView('files')">🗃️ Archivo y recursos</button>
           <button class="nav-btn" id="mir-nav-btn" data-view="mir" onclick="openView('mir')">🩺 MIR</button>
           <button class="nav-btn hidden" id="admin-nav-btn" data-view="admin" onclick="openView('admin')">🛡️ Parte privada</button>
         </div>
@@ -1660,11 +1694,12 @@
         <div id="view-home">
           <div class="panel-header">
             <div class="panel-kicker">Inicio</div>
-            <h3>Bienvenido a bordo</h3>
-            <p>Explora la bitácora, visita la taberna pirata, comparte tesoros académicos y pon rumbo hacia el aprobado. Este barco no va a la deriva: aquí nadie va solo.</p>
+            <h3>Tu escritorio</h3>
+            <p>Lo que toca hoy, en las asignaturas de segundo.</p>
           </div>
 
           <div class="panel-body">
+            <div id="escritorio-estudio"><div class="muted">Cargando tu progreso…</div></div>
             <div class="home-grid">
               <div class="card">
                 <h4>Accesos rápidos</h4>
@@ -1846,7 +1881,7 @@
     <div class="mobile-dock" id="mobile-dock">
       <button class="dock-btn active" data-view="home" onclick="openView('home')"><span>🏠</span><small>Inicio</small></button>
       <button class="dock-btn" data-view="study" onclick="openView('study')"><span>📚</span><small>Estudio</small></button>
-      <button class="dock-btn" data-view="common" onclick="openView('common')"><span>🍻</span><small>Taberna</small></button>
+      <button class="dock-btn" data-view="mir" onclick="openView('mir')"><span>🩺</span><small>MIR</small></button>
       <button class="dock-btn" data-view="files" onclick="openView('files')"><span>📁</span><small>Archivos</small></button>
       <button class="dock-btn" data-view="profile" onclick="openView('profile')"><span>👤</span><small>Perfil</small></button>
     </div>
@@ -4135,6 +4170,30 @@
     stopCommonAuto();
   }
 
+  // Escritorio de estudio: reúne el progreso que cada plataforma guarda por
+  // su cuenta en users/{uid}/… y lo enseña junto. El cálculo y el pintado
+  // están en escritorio.js; aquí solo se traen los datos.
+  async function cargarEscritorio(){
+    const destino = document.getElementById("escritorio-estudio");
+    if(!destino || !currentUser || typeof construirEscritorio !== "function") return;
+    try{
+      const [progSnap, examSnap] = await Promise.all([
+        get(dbRef(db, "users/" + currentUser.uid)),
+        get(dbRef(db, "examenes/" + currentUser.uid)),
+      ]);
+      // El escritorio enlaza directamente a las plataformas, y esas exigen el
+      // pase; sin esto rebotarían al inicio nada más pinchar.
+      entregarPase();
+
+      const progreso = progSnap.exists() ? progSnap.val() : {};
+      const examenes = examSnap.exists() ? examSnap.val() : {};
+      destino.innerHTML = construirEscritorio(progreso, examenes);
+    }catch(e){
+      console.error("escritorio:", e);
+      destino.innerHTML = '<div class="muted">No se ha podido cargar el progreso.</div>';
+    }
+  }
+
   function mostrarSinAcceso(nombreZona){
     const caja = document.getElementById("view-sin-acceso");
     if(caja){
@@ -4178,6 +4237,7 @@
     if(target) target.classList.remove("hidden");
     setActiveNavState(name);
 
+    if(name==="home") cargarEscritorio();
     if(name==="profile") setApprovalBox(currentProfile);
     if(name==="profiles") await loadPublicProfiles();
     if(name==="common"){ await loadCommonMessages(true); startCommonAuto(); }
