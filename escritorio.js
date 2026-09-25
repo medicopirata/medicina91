@@ -288,5 +288,63 @@
     return html + '</div></div>';
   };
 
+
+  /* ---- Resumen personal ------------------------------------------------
+     Sustituye al sistema de rangos. En vez de un cargo inventado, dos cosas
+     que sí dicen algo cuando estudias solo: cuánto llevas dominado de
+     verdad y a qué ritmo tienes que ir para llegar al próximo examen. */
+
+  /* Una pregunta cuenta como dominada cuando el intervalo de repaso llega a
+     tres semanas: es el corte que usa Anki para dar una tarjeta por madura,
+     y evita contar como sabido lo que acabas de acertar una vez. */
+  var DIAS_DOMINADA = 21;
+
+  function dominadas(estado){
+    var qs = (estado && estado.qs) || {}, n = 0;
+    for (var k in qs) { if (qs[k] && qs[k].iv >= DIAS_DOMINADA) n++; }
+    return n;
+  }
+
+  window.resumenPersonal = function (progreso, examenes) {
+    progreso = progreso || {};
+    examenes = examenes || {};
+
+    var dom = 0, vistasTot = 0, totalTot = 0, proximo = null;
+
+    ASIGNATURAS.forEach(function (a) {
+      var e = progreso[a.clave] || {};
+      dom += dominadas(e);
+      vistasTot += vistas(e);
+      totalTot += a.total;
+
+      var ex = examenes[a.clave];
+      var f = fechaExamen(ex);
+      if (!f) return;
+      var d = diasHasta(f);
+      if (d == null || d < 0) return;
+      if (!proximo || d < proximo.dias) {
+        proximo = {
+          asig: a, dias: d,
+          sinVer: Math.max(0, a.total - vistas(e)),
+          convocatoria: (ex && ex.convocatoria === "junio") ? "junio" : "enero",
+        };
+      }
+    });
+
+    if (proximo) {
+      // Ritmo para llegar habiendo visto todo, sin contar el día del examen.
+      proximo.ritmo = proximo.dias > 0
+        ? Math.ceil(proximo.sinVer / proximo.dias)
+        : proximo.sinVer;
+    }
+
+    return {
+      dominadas: dom,
+      vistas: vistasTot,
+      total: totalTot,
+      proximo: proximo,
+    };
+  };
+
   window.ESCRITORIO_ASIGNATURAS = ASIGNATURAS;
 })();
