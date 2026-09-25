@@ -1624,6 +1624,7 @@
           <button class="nav-btn" data-view="common" onclick="openView('common')">🍻 Taberna pirata</button>
           <button class="nav-btn" data-view="private" onclick="openView('private')">✉️ Mensajes privados</button>
           <button class="nav-btn" data-view="files" onclick="openView('files')">🏆🗃️ Compartir tesoros</button>
+          <button class="nav-btn" id="mir-nav-btn" data-view="mir" onclick="openView('mir')">🩺 MIR</button>
           <button class="nav-btn hidden" id="admin-nav-btn" data-view="admin" onclick="openView('admin')">🛡️ Parte privada</button>
         </div>
 
@@ -1823,6 +1824,14 @@
         <div id="view-common" class="hidden"></div>
         <div id="view-private" class="hidden"></div>
         <div id="view-files" class="hidden"></div>
+        <div id="view-mir" class="hidden">
+          <div class="card">
+            <h3>🩺 MIR</h3>
+            <p>La plataforma del MIR está en preparación. Cuando esté lista
+               aparecerá aquí mismo.</p>
+          </div>
+        </div>
+        <div id="view-sin-acceso" class="hidden"></div>
         <div id="view-admin" class="hidden"></div>
 
         <div id="view-wait" class="hidden">
@@ -1927,6 +1936,13 @@
   let latestVisits = 0;
 
   const PUBLIC_ACCESS_KEYS = ["_auth_tkn_882", "medico_pirata_access"];
+  // Pase que abre las plataformas y el panel: lo comprueba acceso.js en cada
+  // una de esas páginas. Solo se entrega desde aquí, al entrar en una zona
+  // permitida, para que un enlace suelto no abra nada por su cuenta.
+  function entregarPase(){
+    try{ localStorage.setItem("mp_pase", JSON.stringify({ t: Date.now() })); }catch(e){}
+  }
+
   function grantLegacyStudyAccess(){
     PUBLIC_ACCESS_KEYS.forEach(key => {
       try{ sessionStorage.setItem(key, "1"); }catch(e){}
@@ -2006,6 +2022,21 @@
 
   function isApproved(){
     return isAdmin() || !!currentProfile?.approved;
+  }
+
+  // ---- Acceso por zonas -----------------------------------------------
+  // Cada zona se concede por separado desde la parte privada. Por defecto
+  // nadie entra: si el perfil no tiene la zona marcada, no pasa. El capitán
+  // (admin) entra siempre a todo.
+  const ZONAS = {
+    estudio: "Bitácora de estudio",
+    mir:     "MIR",
+    capitan: "Zona del capitán",
+  };
+
+  function tieneZona(zona){
+    if(isAdmin()) return true;
+    return !!(currentProfile && currentProfile.zonas && currentProfile.zonas[zona]);
   }
 
   function getAvatarText(profile){
@@ -2550,7 +2581,8 @@
 
     const old = document.getElementById("study-admin-zone");
     if(old) old.remove();
-    if(!isAdmin()) return;
+    // Antes solo la veía el capitán; ahora es una zona que se puede conceder.
+    if(!tieneZona("capitan")) return;
 
     anchor.insertAdjacentHTML("beforebegin", `
       <div class="course-section" id="study-admin-zone">
@@ -3930,6 +3962,16 @@
           <button class="btn btn-soft" onclick="togglePublicProfile('${user.uid}', ${user.publicVisible!==false?"false":"true"})">${user.publicVisible!==false?"Ocultar perfil":"Mostrar perfil"}</button>
           <button class="btn btn-soft" onclick="showUserSessions('${user.uid}')">Ver sesiones</button>
         </div>
+        <div class="row" style="margin-top:8px;flex-wrap:wrap;align-items:center;">
+          <span class="muted" style="font-size:.82rem;">Zonas:</span>
+          ${Object.keys(ZONAS).map(z => {
+            const tiene = !!(user.zonas && user.zonas[z]);
+            return `<button class="btn ${tiene?"btn-ok":"btn-soft"}"
+                      onclick="toggleZona('${user.uid}','${z}', ${tiene?"false":"true"})"
+                      title="${tiene?"Quitar":"Dar"} acceso a ${escapeHtml(ZONAS[z])}">
+                      ${tiene?"✓":"✗"} ${escapeHtml(ZONAS[z])}</button>`;
+          }).join("")}
+        </div>
       </div>`;
     }).join("");
   }
@@ -3958,6 +4000,12 @@
 
   async function toggleAccess(uid,value){
     await update(dbRef(db,"profiles/"+uid),{ approved:value, reviewedAt:new Date().toISOString(), reviewedBy:currentUser.uid });
+    await loadAdminUsers();
+  }
+
+  async function toggleZona(uid, zona, value){
+    await update(dbRef(db,"profiles/"+uid+"/zonas"), { [zona]: value });
+    await update(dbRef(db,"profiles/"+uid), { zonasReviewedAt:new Date().toISOString() });
     await loadAdminUsers();
   }
 
@@ -4071,12 +4119,26 @@
   }
 
   function hideViews(){
-    ["home","study","profile","profiles","common","private","files","admin","wait"].forEach(name=>{
+    ["home","study","mir","profile","profiles","common","private","files","admin","wait","sin-acceso"].forEach(name=>{
       const el = document.getElementById("view-"+name);
       if(el) el.classList.add("hidden");
     });
     setActiveNavState("");
     stopCommonAuto();
+  }
+
+  function mostrarSinAcceso(nombreZona){
+    const caja = document.getElementById("view-sin-acceso");
+    if(caja){
+      caja.innerHTML = `<div class="card">
+        <h3>🔒 ${escapeHtml(nombreZona)}</h3>
+        <p>Tu cuenta todavía no tiene acceso a esta zona. Pídeselo al capitán
+           y te la abrirá desde su panel.</p>
+        <button class="btn btn-dark" onclick="openView('home')">← Volver al inicio</button>
+      </div>`;
+      caja.classList.remove("hidden");
+    }
+    setActiveNavState("home");
   }
 
   async function openView(name){
@@ -4093,6 +4155,16 @@
       setActiveNavState("home");
       return;
     }
+
+    // Zonas con acceso concedido una a una (la parte privada del capitán
+    // no entra aquí: esa sigue siendo solo para admin, arriba).
+    const ZONA_DE_VISTA = { study: "estudio", mir: "mir" };
+    const zonaPedida = ZONA_DE_VISTA[name];
+    if(zonaPedida && !tieneZona(zonaPedida)){
+      mostrarSinAcceso(ZONAS[zonaPedida]);
+      return;
+    }
+    if(zonaPedida) entregarPase();
 
     const target = document.getElementById("view-"+name);
     if(target) target.classList.remove("hidden");
@@ -4151,6 +4223,7 @@
 
     try{
       grantLegacyStudyAccess();
+      entregarPase();
       const fullUrl = new URL(url, window.location.href).href;
 
       frame.onload = () => {
@@ -4385,6 +4458,7 @@
   window.toggleAccess = toggleAccess;
   window.toggleUpload = toggleUpload;
   window.togglePublicProfile = togglePublicProfile;
+  window.toggleZona = toggleZona;
   window.deleteCommonMessage = deleteCommonMessage;
   window.loadAdminPrivateConversation = loadAdminPrivateConversation;
   window.deletePrivateMessage = deletePrivateMessage;
