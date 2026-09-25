@@ -2347,13 +2347,18 @@
   async function actualizarResumenUI(){
     if(!currentUser || typeof resumenPersonal !== "function") return;
 
+    const leerNodo = async ruta => {
+      try{ const s = await get(dbRef(db, ruta)); return s.exists() ? s.val() : {}; }
+      catch(e){ console.warn("no se pudo leer " + ruta + ":", e.message); return {}; }
+    };
+
     let r;
     try{
       const [p, e] = await Promise.all([
-        get(dbRef(db, "users/" + currentUser.uid)),
-        get(dbRef(db, "examenes/" + currentUser.uid)),
+        leerNodo("users/" + currentUser.uid),
+        leerNodo("examenes/" + currentUser.uid),
       ]);
-      r = resumenPersonal(p.exists() ? p.val() : {}, e.exists() ? e.val() : {});
+      r = resumenPersonal(p, e);
     }catch(err){ console.error("resumen:", err); return; }
 
     const nombre = currentProfile?.username || currentProfile?.nombre || "";
@@ -4105,11 +4110,21 @@
   async function cargarEscritorio(){
     const destino = document.getElementById("escritorio-estudio");
     if(!destino || !currentUser || typeof construirEscritorio !== "function") return;
+    // Cada lectura por su lado: si las reglas de la base tumban una (pasó
+    // con "examenes", que no tenía permiso), la otra sigue valiendo y el
+    // escritorio se pinta igual, solo que sin fechas de examen.
+    const leer = async ruta => {
+      try{ const s = await get(dbRef(db, ruta)); return s.exists() ? s.val() : {}; }
+      catch(e){ console.warn("no se pudo leer " + ruta + ":", e.message); return {}; }
+    };
+
     try{
-      const [progSnap, examSnap] = await Promise.all([
-        get(dbRef(db, "users/" + currentUser.uid)),
-        get(dbRef(db, "examenes/" + currentUser.uid)),
+      const [progreso0, examenes0] = await Promise.all([
+        leer("users/" + currentUser.uid),
+        leer("examenes/" + currentUser.uid),
       ]);
+      const progSnap = { exists: () => true, val: () => progreso0 };
+      const examSnap = { exists: () => true, val: () => examenes0 };
       // El escritorio enlaza directamente a las plataformas, y esas exigen el
       // pase; sin esto rebotarían al inicio nada más pinchar.
       entregarPase();
